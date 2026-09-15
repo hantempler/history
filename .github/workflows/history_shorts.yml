@@ -7,9 +7,9 @@ on:
   repository_dispatch:
     types: [trigger-history-shorts]
 
-  # 매일 아침 6시 00분 (KST) = 전날 21:00 (UTC)
+  # 매일 아침 5시 00분 (KST) = 전날 20:00 (UTC)
   schedule:
-    - cron: '0 21 * * *'
+    - cron: '0 20 * * *'
 
 # 동일 그룹의 job이 이미 실행 중이면 이전 것을 취소하고 새 것을 실행
 concurrency:
