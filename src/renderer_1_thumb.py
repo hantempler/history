@@ -393,6 +393,10 @@ def run_renderer_thumb(target_date=None, edition='morning'):
                 if event_year and month_day_str:
                     display_date_str = f"{event_year}년 {month_day_str}"
                 
+                # 강제로 노란색 타이틀 끝에 (연도) 추가
+                if event_year and f"({event_year})" not in title_text:
+                    title_text = f"{title_text} ({event_year})"
+                
         center_text = None
         if part == "closing":
             center_text = script_data.get("closing_quote")
