@@ -263,19 +263,18 @@ def main():
             )
 
         # ------------------------------------------------------------------
-        # 6단계: YouTube 업로드 (임시 중지)
+        # 6단계: YouTube 업로드
         # ------------------------------------------------------------------
         print("\n--- 6. YouTube 업로드 ---")
-        print("[YouTube] ⚠️ 새 채널 생성 전까지 자동 업로드는 일시 중지됩니다. 렌더링된 영상만 로컬에 저장됩니다.")
-        # try:
-        #     run_with_retry(
-        #         upload_video_to_youtube,
-        #         "YouTube",
-        #         3, 20,
-        #         target_date, edition=edition
-        #     )
-        # except Exception as e:
-        #     print(f"[YouTube] ⚠️ 최종 업로드 실패 (파이프라인은 계속): {e}")
+        try:
+            run_with_retry(
+                upload_video_to_youtube,
+                "YouTube",
+                3, 20,
+                target_date, edition=edition
+            )
+        except Exception as e:
+            print(f"[YouTube] ⚠️ 최종 업로드 실패 (파이프라인은 계속): {e}")
 
         print(f"\n[{edition.upper()}] 모든 작업이 성공적으로 완료되었습니다!")
 
