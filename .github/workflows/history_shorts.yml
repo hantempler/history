@@ -1,0 +1,99 @@
+name: History Shorts Pipeline
+on:
+  # 수동 실행을 위한 워크플로우 디스패치
+  workflow_dispatch:
+
+  # Cloudflare Workers 등 외부 API 호출을 위한 디스패치
+  repository_dispatch:
+    types: [trigger-history-shorts]
+
+  # 매일 아침 6시 00분 (KST) = 전날 21:00 (UTC)
+  schedule:
+    - cron: '0 21 * * *'
+
+# 동일 그룹의 job이 이미 실행 중이면 이전 것을 취소하고 새 것을 실행
+concurrency:
+  group: briefing-pipeline
+  cancel-in-progress: true
+
+# 봇이 Git Commit & Push를 할 수 있도록 쓰기 권한 부여
+permissions:
+  contents: write
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60  # 전체 job 타임아웃 (렌더링 hang 방지)
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Setup Google Cloud Credentials
+        env:
+          GCP_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS_JSON }}
+        run: |
+          mkdir -p config
+          echo "$GCP_CREDENTIALS" > config/application_default_credentials.json
+
+      - name: Setup Naver API keys
+        run: |
+          echo "NAVER_CLIENT_ID=${{ secrets.NAVER_CLIENT_ID }}" > config/.env
+          echo "NAVER_CLIENT_SECRET=${{ secrets.NAVER_CLIENT_SECRET }}" >> config/.env
+
+      - name: Setup YouTube Token
+        env:
+          YOUTUBE_TOKEN: ${{ secrets.YOUTUBE_TOKEN_JSON }}
+        run: |
+          echo "$YOUTUBE_TOKEN" > config/youtube_token.json
+
+      # -----------------------------------------------------------------------
+      # 불필요한 Edition 결정 로직 제거 (history_shorts는 단일 파이프라인)
+      # -----------------------------------------------------------------------
+
+      # -----------------------------------------------------------------------
+      # 파이프라인 실행 (실패 시 최대 3회 재시도)
+      # nick-fields/retry action 사용:
+      #   - max_attempts: 3
+      #   - retry_wait_seconds: 60 (1분 대기 후 재시도)
+      #   - timeout_minutes: 50 (단일 시도 타임아웃)
+      # -----------------------------------------------------------------------
+      - name: Run Pipeline (Headless mode) with retry
+        uses: nick-fields/retry@v3
+        with:
+          max_attempts: 3
+          retry_wait_seconds: 60
+          timeout_minutes: 50
+          command: |
+            echo "Executing headless pipeline for history shorts"
+            python src/auto_run.py
+
+      - name: Save history and cleanup old files
+        run: |
+          # 3일 지난 히스토리 파일 삭제
+          find data/ -name "history_*.json" -type f -mtime +3 -delete
+          
+          # Git 설정 (GitHub Actions 봇으로 커밋)
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # 변경된 히스토리 파일 추가 (강제)
+          git add -f data/history_*.json
+          
+          # 변경사항이 있을 때만 커밋하고 푸시
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: update daily history and cleanup [skip ci]"
+            git push
+          fi

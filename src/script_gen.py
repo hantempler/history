@@ -1,0 +1,149 @@
+import json
+import os
+import requests
+from google import genai
+from google.genai import types
+from datetime import datetime
+import sys
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from src.config import GCP_PROJECT_ID, GCP_LOCATION, get_daily_dir
+
+def run_script_gen(target_date=None, edition='morning'):
+    client = genai.Client(vertexai=True, project=GCP_PROJECT_ID, location=GCP_LOCATION)
+    
+    daily_dir = get_daily_dir(target_date, edition)
+    titles_path = os.path.join(daily_dir, "1_all_titles.json")
+    if not os.path.exists(titles_path):
+        print(f"File not found: {titles_path}. Run wiki_scraper first.")
+        return None
+        
+    with open(titles_path, "r", encoding="utf-8") as f:
+        all_events = json.load(f)
+        
+    if not all_events:
+        print("No events available.")
+        return None
+        
+    print(f"Loaded {len(all_events)} historical events.")
+    
+    # KST 기준 날짜/요일 계산
+    if not target_date:
+        from datetime import timezone, timedelta
+        target_date = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
+    month_day = f"{int(target_date[4:6])}월 {int(target_date[6:8])}일"
+    
+    # 1차: 가장 흥미로운 6개 선정 (이미지 없는 경우 대비)
+    titles_list_str = ""
+    for i, evt in enumerate(all_events):
+        titles_list_str += f"[{i}] {evt['year']} - {evt['text']}\n"
+        
+    selection_prompt = f"""
+    아래는 과거의 '오늘({month_day})'에 발생했던 전 세계의 역사적 사건들입니다 (영어).
+    이 중에서 한국 유튜브 시청자들이 가장 흥미로워할 만한, 스토리가 극적이거나 유명한 사건 6가지를 우선순위대로 골라주세요.
+    선정한 사건의 인덱스 번호를 JSON 배열 형태(예: [12, 45, 10, 5, 8, 90])로만 출력해주세요.
+    
+    사건 목록:
+    {titles_list_str}
+    """
+    
+    selection_response = client.models.generate_content(
+        model='gemini-2.5-pro',
+        contents=selection_prompt,
+        config=types.GenerateContentConfig(response_mime_type="application/json")
+    )
+    
+    try:
+        selected_indices = json.loads(selection_response.text)
+    except Exception:
+        selected_indices = [0, 1, 2, 3, 4, 5]
+        
+    selected_events = []
+    issue_counter = 1
+    
+    for idx in selected_indices:
+        if len(selected_events) >= 3:
+            break
+        if 0 <= idx < len(all_events):
+            evt = all_events[idx]
+            # 썸네일 다운로드
+            img_path = None
+            if evt.get('thumbnail_url'):
+                try:
+                    img_res = requests.get(evt['thumbnail_url'], headers={"User-Agent": "Mozilla/5.0"})
+                    if img_res.status_code == 200:
+                        img_filename = f"2_img_issue{issue_counter}.jpg"
+                        img_path = os.path.join(daily_dir, img_filename)
+                        with open(img_path, "wb") as img_f:
+                            img_f.write(img_res.content)
+                except Exception as e:
+                    print(f"Failed to download image for {evt['year']}: {e}")
+                    
+            if not img_path:
+                print(f"Skipping index {idx} due to missing image.")
+                continue
+                
+            evt['image_path'] = img_path
+            selected_events.append(evt)
+            issue_counter += 1
+            
+    # 선택된 기사 저장
+    selected_path = os.path.join(daily_dir, "2_selected_articles.json")
+    with open(selected_path, "w", encoding="utf-8") as f:
+        json.dump(selected_events, f, ensure_ascii=False, indent=2)
+        
+    # 2차: 대본 작성 (다큐멘터리 톤)
+    context = ""
+    for i, evt in enumerate(selected_events):
+        context += f"이슈 {i+1} (연도: {evt['year']}):\n요약: {evt['text']}\n상세: {evt['extract']}\n\n"
+        
+    system_instruction = (
+        "당신은 몰입감 넘치는 유튜브 역사 다큐멘터리 채널의 메인 내레이터이자 대본 작가입니다.\n"
+        f"오늘의 날짜는 '{month_day}'입니다. 대본을 완벽한 한국어로 번역/각색하여 작성하세요.\n"
+        "말투는 신뢰감 있으면서도 영화 예고편처럼 사람들을 빠져들게 하는 극적인 어투를 사용하세요."
+    )
+    
+    script_prompt = f"""
+    과거의 '{month_day}'에 발생했던 아래 3가지 역사적 사건을 바탕으로 1분 분량의 쇼츠 대본을 작성해주세요.
+    
+    조건:
+    1. 대본은 반드시 JSON 형식으로 출력
+    2. 나레이션 텍스트만 출력할 것 (지시문 금지)
+    
+    출력 형식 (JSON):
+    {{
+        "hook_title": "오늘의 3가지 사건을 관통하는 15자 내외의 강렬한 자막 훅 (예: 세상을 바꾼 {month_day}의 3가지 사건)",
+        "hook": "{month_day}, 과거의 오늘엔 어떤 일이 있었을까요? 세상을 바꾼 3가지 사건을 만나봅니다.",
+        "issue1_title": "(첫 번째 사건의 화면 노출용 15자 내외 한국어 요약 제목)",
+        "issue1": "(첫 번째 사건에 대한 극적이고 흥미로운 한국어 나레이션, 3-4문장)",
+        "issue2_title": "(두 번째 사건의 화면 노출용 15자 내외 한국어 요약 제목)",
+        "issue2": "(두 번째 사건에 대한 극적이고 흥미로운 한국어 나레이션, 3-4문장)",
+        "issue3_title": "(세 번째 사건의 화면 노출용 15자 내외 한국어 요약 제목)",
+        "issue3": "(세 번째 사건에 대한 극적이고 흥미로운 한국어 나레이션, 3-4문장)",
+        "closing": "(오늘 소개된 3가지 역사적 사건들을 관통하는 깊이 있는 인사이트나 역사적 교훈을 담은 내레이션, 3-4문장)",
+        "closing_quote": "(오늘의 사건들을 꿰뚫는 짧은 한 줄 통찰 또는 명언) - (발언자 혹은 '1분 타임머신')\\n\\n구독과 좋아요 부탁드립니다!"
+    }}
+    
+    이슈 데이터:
+    {context}
+    """
+    
+    response = client.models.generate_content(
+        model='gemini-2.5-pro',
+        contents=script_prompt,
+        config=types.GenerateContentConfig(
+            system_instruction=system_instruction,
+            response_mime_type="application/json",
+        )
+    )
+    
+    script_text = response.text.strip()
+    output_path = os.path.join(daily_dir, "3_script.json")
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(script_text)
+        
+    print(f"Generated script saved to {output_path}")
+    return script_text
+
+if __name__ == "__main__":
+    run_script_gen()
