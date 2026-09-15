@@ -7,10 +7,7 @@ on:
   repository_dispatch:
     types: [trigger-history-shorts]
 
-  # 매일 아침 5시 00분 (KST) = 전날 20:00 (UTC)
-  schedule:
-    - cron: '0 20 * * *'
-
+  # GitHub 내부 타이머(schedule)는 Cloudflare Cron과 중복되므로 삭제함.
 # 동일 그룹의 job이 이미 실행 중이면 이전 것을 취소하고 새 것을 실행
 concurrency:
   group: briefing-pipeline
