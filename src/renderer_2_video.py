@@ -17,7 +17,7 @@ def chunk_text(text, max_length=15):
     current_chunk_lines = []
     
     for word in lines:
-        if sum(len(w) for w in current_line) + len(current_line) + len(word) > 18:
+        if sum(len(w) for w in current_line) + len(current_line) + len(word) > 24:
             if current_line:
                 current_chunk_lines.append(" ".join(current_line))
             current_line = [word]

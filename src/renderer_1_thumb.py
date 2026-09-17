@@ -363,10 +363,16 @@ def run_renderer_thumb(target_date=None, edition='morning'):
     date_parts = os.path.basename(daily_dir).split('-')
     if len(date_parts) == 3:
         dt = datetime(int(date_parts[0]), int(date_parts[1]), int(date_parts[2]))
-        weekdays = ["월", "화", "수", "목", "금", "토", "일"]
-        weekday = weekdays[dt.weekday()]
-        today_full_date = f"{date_parts[0]}년 {int(date_parts[1])}월 {int(date_parts[2])}일 ({weekday})"
-        month_day_str = f"{int(date_parts[1])}월 {int(date_parts[2])}일"
+        if edition == 'history_en':
+            weekdays_en = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+            weekday = weekdays_en[dt.weekday()]
+            today_full_date = f"{dt.strftime('%B')} {dt.day}, {dt.year} ({weekday})"
+            month_day_str = f"{dt.strftime('%B')} {dt.day}"
+        else:
+            weekdays = ["월", "화", "수", "목", "금", "토", "일"]
+            weekday = weekdays[dt.weekday()]
+            today_full_date = f"{date_parts[0]}년 {int(date_parts[1])}월 {int(date_parts[2])}일 ({weekday})"
+            month_day_str = f"{int(date_parts[1])}월 {int(date_parts[2])}일"
     else:
         today_full_date = ""
         month_day_str = ""

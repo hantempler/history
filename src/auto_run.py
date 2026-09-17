@@ -33,11 +33,11 @@ def run_with_retry(func, step_name, max_attempts=3, wait_seconds=30, *args, **kw
         try:
             print(f"[{step_name}] 시도 {attempt}/{max_attempts} ...")
             result = func(*args, **kwargs)
-            print(f"[{step_name}] ✅ 성공 (시도 {attempt}회)")
+            print(f"[{step_name}] [SUCCESS] 성공 (시도 {attempt}회)")
             return result
         except Exception as e:
             last_exc = e
-            print(f"[{step_name}] ❌ 실패 (시도 {attempt}회): {e}")
+            print(f"[{step_name}] [FAIL] 실패 (시도 {attempt}회): {e}")
             if attempt < max_attempts:
                 print(f"[{step_name}] {wait_seconds}초 후 재시도합니다...")
                 time.sleep(wait_seconds)
@@ -102,12 +102,17 @@ def upload_video_to_youtube(target_date, edition):
     import json
     
     top_title = EDITION_CONFIG[edition]['top_title']
-    # 날짜 포맷: YYYYMMDD -> YYYY.MM.DD(요일)
     dt = datetime.strptime(target_date, "%Y%m%d")
-    weekdays = ["월", "화", "수", "목", "금", "토", "일"]
-    weekday_str = weekdays[dt.weekday()]
-    date_formatted = f"{target_date[:4]}.{target_date[4:6]}.{target_date[6:8]}({weekday_str})"
-    yt_title = f"{date_formatted} {top_title} 역사 속 오늘"
+    if edition == 'history_en':
+        weekdays_en = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        weekday_str = weekdays_en[dt.weekday()]
+        date_formatted = f"{dt.strftime('%B')} {dt.day}, {dt.year} ({weekday_str})"
+        yt_title = f"{date_formatted} | On This Day in History"
+    else:
+        weekdays = ["월", "화", "수", "목", "금", "토", "일"]
+        weekday_str = weekdays[dt.weekday()]
+        date_formatted = f"{target_date[:4]}.{target_date[4:6]}.{target_date[6:8]}({weekday_str})"
+        yt_title = f"{date_formatted} {top_title} 역사 속 오늘"
     
     # 기사 링크 불러오기
     daily_dir = get_daily_dir(target_date, edition)
@@ -120,18 +125,29 @@ def upload_video_to_youtube(target_date, edition):
                 articles = json.load(f)
             
             if articles:
-                news_links_text = "\n\n[오늘의 역사 주요 사건]\n"
+                if edition == 'history_en':
+                    news_links_text = "\n\n[Today's History Highlights]\n"
+                else:
+                    news_links_text = "\n\n[오늘의 역사 주요 사건]\n"
                 for idx, article in enumerate(articles, 1):
-                    news_links_text += f"{idx}. {article.get('year')}년 - {article.get('text')}\n"
+                    news_links_text += f"{idx}. {article.get('year')} - {article.get('text')}\n"
         except Exception as e:
             print(f"[YouTube] 기사 불러오기 실패: {e}")
 
-    yt_description = (
-        f"{date_formatted} {top_title} 역사 속 오늘\n"
-        f"{news_links_text}\n"
-        "#역사 #오늘의역사 #다큐멘터리 #쇼츠 #Shorts\n"
-        f"#{edition}"
-    )
+    if edition == 'history_en':
+        yt_description = (
+            f"{date_formatted} | On This Day in History\n"
+            f"{news_links_text}\n"
+            "#history #onthisday #documentary #shorts\n"
+            f"#{edition}"
+        )
+    else:
+        yt_description = (
+            f"{date_formatted} {top_title} 역사 속 오늘\n"
+            f"{news_links_text}\n"
+            "#역사 #오늘의역사 #다큐멘터리 #쇼츠 #Shorts\n"
+            f"#{edition}"
+        )
 
     print(f"[YouTube] '{yt_title}' 업로드 중...")
     try:
@@ -164,125 +180,64 @@ def main():
     parser.add_argument("--date", type=str, default=None, help="대상 날짜 (YYYYMMDD 형식). 지정하지 않으면 오늘 날짜를 사용합니다.")
     args = parser.parse_args()
 
-    edition = "history"
-    # KST 기준 오늘 날짜 사용 (GitHub Actions 서버는 UTC)
-    # 예: 토 KST 06:30 = 금 UTC 21:30 → UTC 날짜 쓰면 금요일로 오인
     _now_kst = datetime.now(KST)
     target_date = args.date if args.date else _now_kst.strftime("%Y%m%d")
 
+    editions = ["history", "history_en"]
 
+    for edition in editions:
+        from src.config import get_daily_dir
+        daily_dir = get_daily_dir(target_date, edition)
 
-    # daily_dir 참조 (마커 파일 체크에 사용)
-    from src.config import get_daily_dir
-    daily_dir = get_daily_dir(target_date, edition)
+        print(f"\n\n=== 뉴스 브리핑 무인 파이프라인 ===")
+        print(f"[{edition.upper()}] 파이프라인 시작 (대상 날짜: {target_date})")
+        print(f"[작업 디렉토리] {daily_dir}")
 
-    print(f"=== 뉴스 브리핑 무인 파이프라인 ===")
-    print(f"[{edition.upper()}] 파이프라인 시작 (대상 날짜: {target_date})")
-    print(f"[작업 디렉토리] {daily_dir}")
-
-    try:
-        # ------------------------------------------------------------------
-        # 1단계: 기사 스크랩
-        # 출력: 1_all_titles.json
-        # 네트워크 의존 → 재시도 3회
-        # ------------------------------------------------------------------
-        print("\n--- 1. 기사 스크랩 ---")
-        if _is_step_done(daily_dir, STEP_MARKERS["scrape"]):
-            print(f"[스크랩] ⏩ 이미 완료된 단계입니다. 건너뜁니다.")
-        else:
-            run_with_retry(
-                scrape_wiki_onthisday,
-                "스크랩",
-                3, 30,          # max_attempts=3, wait=30초
-                target_date, edition=edition
-            )
-
-        # ------------------------------------------------------------------
-        # 2단계: 대본 작성
-        # 출력: 3_script.json
-        # AI API 의존 → 재시도 3회
-        # ------------------------------------------------------------------
-        print("\n--- 2. 대본 작성 ---")
-        if _is_step_done(daily_dir, STEP_MARKERS["script"]):
-            print(f"[대본] ⏩ 이미 완료된 단계입니다. 건너뜁니다.")
-        else:
-            run_with_retry(
-                run_script_gen,
-                "대본",
-                3, 30,
-                target_date, edition=edition
-            )
-
-        # ------------------------------------------------------------------
-        # 3단계: 음성 합성(TTS)
-        # 출력: 4_audio_hook.mp3 외
-        # Google Cloud TTS API 의존 → 재시도 3회
-        # ------------------------------------------------------------------
-        print("\n--- 3. 음성 합성 (TTS) ---")
-        if _is_step_done(daily_dir, STEP_MARKERS["tts"]):
-            print(f"[TTS] ⏩ 이미 완료된 단계입니다. 건너뜁니다.")
-        else:
-            run_with_retry(
-                run_tts_gen,
-                "TTS",
-                3, 30,
-                target_date, edition=edition
-            )
-
-        # ------------------------------------------------------------------
-        # 4단계: 썸네일 생성
-        # 출력: 5_thumbnail.png (추정)
-        # CPU 연산 → 재시도 2회
-        # ------------------------------------------------------------------
-        print("\n--- 4. 썸네일 생성 ---")
-        if _is_step_done(daily_dir, STEP_MARKERS["thumb"]):
-            print(f"[썸네일] ⏩ 이미 완료된 단계입니다. 건너뜁니다.")
-        else:
-            run_with_retry(
-                run_renderer_thumb,
-                "썸네일",
-                2, 15,
-                target_date, edition=edition
-            )
-
-        # ------------------------------------------------------------------
-        # 5단계: 영상 렌더링
-        # 출력: {target_date}{video_suffix}.mp4
-        # CPU 연산 → 재시도 2회
-        # ------------------------------------------------------------------
-        print("\n--- 5. 영상 렌더링 ---")
-        video_path, _ = _get_video_path(target_date, edition)
-        if os.path.exists(video_path) and os.path.getsize(video_path) > 0:
-            print(f"[렌더링] ⏩ 이미 완료된 단계입니다. 건너뜁니다.")
-        else:
-            run_with_retry(
-                run_renderer_video,
-                "렌더링",
-                2, 15,
-                target_date, edition=edition
-            )
-
-        # ------------------------------------------------------------------
-        # 6단계: YouTube 업로드
-        # ------------------------------------------------------------------
-        print("\n--- 6. YouTube 업로드 ---")
         try:
-            run_with_retry(
-                upload_video_to_youtube,
-                "YouTube",
-                3, 20,
-                target_date, edition=edition
-            )
+            print("\n--- 1. 기사 스크랩 ---")
+            if _is_step_done(daily_dir, STEP_MARKERS["scrape"]):
+                print(f"[스크랩] [SKIP] 이미 완료된 단계입니다. 건너뜁니다.")
+            else:
+                run_with_retry(scrape_wiki_onthisday, "스크랩", 3, 30, target_date, edition=edition)
+
+            print("\n--- 2. 대본 작성 ---")
+            if _is_step_done(daily_dir, STEP_MARKERS["script"]):
+                print(f"[대본] [SKIP] 이미 완료된 단계입니다. 건너뜁니다.")
+            else:
+                run_with_retry(run_script_gen, "대본", 3, 30, target_date, edition=edition)
+
+            print("\n--- 3. 음성 합성 (TTS) ---")
+            if _is_step_done(daily_dir, STEP_MARKERS["tts"]):
+                print(f"[TTS] [SKIP] 이미 완료된 단계입니다. 건너뜁니다.")
+            else:
+                run_with_retry(run_tts_gen, "TTS", 3, 30, target_date, edition=edition)
+
+            print("\n--- 4. 썸네일 생성 ---")
+            if _is_step_done(daily_dir, STEP_MARKERS["thumb"]):
+                print(f"[썸네일] [SKIP] 이미 완료된 단계입니다. 건너뜁니다.")
+            else:
+                run_with_retry(run_renderer_thumb, "썸네일", 2, 15, target_date, edition=edition)
+
+            print("\n--- 5. 영상 렌더링 ---")
+            video_path, _ = _get_video_path(target_date, edition)
+            if os.path.exists(video_path) and os.path.getsize(video_path) > 0:
+                print(f"[렌더링] [SKIP] 이미 완료된 단계입니다. 건너뜁니다.")
+            else:
+                run_with_retry(run_renderer_video, "렌더링", 2, 15, target_date, edition=edition)
+
+            print("\n--- 6. YouTube 업로드 ---")
+            try:
+                run_with_retry(upload_video_to_youtube, "YouTube", 3, 20, target_date, edition=edition)
+            except Exception as e:
+                print(f"[YouTube] [WARN] 최종 업로드 실패 (파이프라인은 계속): {e}")
+
+            print(f"\n[{edition.upper()}] 모든 작업이 성공적으로 완료되었습니다!")
+
         except Exception as e:
-            print(f"[YouTube] ⚠️ 최종 업로드 실패 (파이프라인은 계속): {e}")
-
-        print(f"\n[{edition.upper()}] 모든 작업이 성공적으로 완료되었습니다!")
-
-    except Exception as e:
-        print(f"\n[PIPELINE ERROR] 파이프라인 중단: {e}")
-        import traceback
-        traceback.print_exc()
-        sys.exit(1)
+            print(f"\n[PIPELINE ERROR] 파이프라인 중단: {e}")
+            import traceback
+            traceback.print_exc()
+            print(f"Skipping {edition} due to error, proceeding to next if available.")
 
 
 if __name__ == "__main__":

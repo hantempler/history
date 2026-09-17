@@ -97,36 +97,69 @@ def run_script_gen(target_date=None, edition='morning'):
     for i, evt in enumerate(selected_events):
         context += f"이슈 {i+1} (연도: {evt['year']}):\n요약: {evt['text']}\n상세: {evt['extract']}\n\n"
         
-    system_instruction = (
-        "당신은 몰입감 넘치는 유튜브 역사 다큐멘터리 채널의 메인 내레이터이자 대본 작가입니다.\n"
-        f"오늘의 날짜는 '{month_day}'입니다. 대본을 완벽한 한국어로 번역/각색하여 작성하세요.\n"
-        "말투는 신뢰감 있으면서도 영화 예고편처럼 사람들을 빠져들게 하는 극적인 어투를 사용하세요."
-    )
-    
-    script_prompt = f"""
-    과거의 '{month_day}'에 발생했던 아래 3가지 역사적 사건을 바탕으로 1분 분량의 쇼츠 대본을 작성해주세요.
-    
-    조건:
-    1. 대본은 반드시 JSON 형식으로 출력
-    2. 나레이션 텍스트만 출력할 것 (지시문 금지)
-    
-    출력 형식 (JSON):
-    {{
-        "hook_title": "오늘의 3가지 사건을 관통하는 15자 내외의 강렬한 자막 훅 (예: 세상을 바꾼 {month_day}의 3가지 사건)",
-        "hook": "{month_day}, 과거의 오늘엔 어떤 일이 있었을까요? 세상을 바꾼 3가지 사건을 만나봅니다.",
-        "issue1_title": "(첫 번째 사건의 화면 노출용 15자 내외 한국어 요약 제목)",
-        "issue1": "(첫 번째 사건에 대한 극적이고 흥미로운 한국어 나레이션, 3-4문장)",
-        "issue2_title": "(두 번째 사건의 화면 노출용 15자 내외 한국어 요약 제목)",
-        "issue2": "(두 번째 사건에 대한 극적이고 흥미로운 한국어 나레이션, 3-4문장)",
-        "issue3_title": "(세 번째 사건의 화면 노출용 15자 내외 한국어 요약 제목)",
-        "issue3": "(세 번째 사건에 대한 극적이고 흥미로운 한국어 나레이션, 3-4문장)",
-        "closing": "(오늘 소개된 3가지 역사적 사건들을 관통하는 깊이 있는 인사이트나 역사적 교훈을 담은 내레이션, 3-4문장)",
-        "closing_quote": "(오늘의 사건들을 꿰뚫는 짧은 한 줄 통찰 또는 명언) - (발언자 혹은 '1분 타임머신')\\n\\n구독과 좋아요 부탁드립니다!"
-    }}
-    
-    이슈 데이터:
-    {context}
-    """
+    if edition == 'history_en':
+        dt = datetime.strptime(target_date, '%Y%m%d')
+        month_day_en = f"{dt.strftime('%B')} {dt.day}"
+        system_instruction = (
+            "You are the main narrator and scriptwriter for an immersive YouTube history documentary channel targeting a global audience.\n"
+            f"Today's date is '{month_day_en}'. Write the script in perfect, captivating English.\n"
+            "Use a dramatic, engaging tone similar to a movie trailer, while maintaining historical credibility."
+        )
+        script_prompt = f"""
+        Based on the following 3 historical events that happened on '{month_day_en}' in the past, write a 1-minute YouTube Shorts script.
+        
+        Conditions:
+        1. Output MUST be in JSON format only.
+        2. Output ONLY the narration text (no stage directions).
+        
+        Output Format (JSON):
+        {{
+            "hook_title": "A short, impactful title hook connecting the 3 events (max 5 words, e.g., 3 Events that Changed {month_day_en})",
+            "hook": "On this day, {month_day_en}, what happened in history? Let's dive into 3 events that changed the world.",
+            "issue1_title": "(Short, catchy title for event 1, max 5 words)",
+            "issue1": "(Dramatic and engaging narration for event 1, 3-4 sentences)",
+            "issue2_title": "(Short, catchy title for event 2, max 5 words)",
+            "issue2": "(Dramatic and engaging narration for event 2, 3-4 sentences)",
+            "issue3_title": "(Short, catchy title for event 3, max 5 words)",
+            "issue3": "(Dramatic and engaging narration for event 3, 3-4 sentences)",
+            "closing": "(A deep insight or historical lesson connecting today's 3 events, 3-4 sentences)",
+            "closing_quote": "(A profound quote or one-line insight piercing through today's events) - (Speaker or '1 Min Time Machine')\\n\\nPlease subscribe and like!"
+        }}
+        
+        Issue Data:
+        {context}
+        """
+    else:
+        system_instruction = (
+            "당신은 몰입감 넘치는 유튜브 역사 다큐멘터리 채널의 메인 내레이터이자 대본 작가입니다.\n"
+            f"오늘의 날짜는 '{month_day}'입니다. 대본을 완벽한 한국어로 번역/각색하여 작성하세요.\n"
+            "말투는 신뢰감 있으면서도 영화 예고편처럼 사람들을 빠져들게 하는 극적인 어투를 사용하세요."
+        )
+        
+        script_prompt = f"""
+        과거의 '{month_day}'에 발생했던 아래 3가지 역사적 사건을 바탕으로 1분 분량의 쇼츠 대본을 작성해주세요.
+        
+        조건:
+        1. 대본은 반드시 JSON 형식으로 출력
+        2. 나레이션 텍스트만 출력할 것 (지시문 금지)
+        
+        출력 형식 (JSON):
+        {{
+            "hook_title": "오늘의 3가지 사건을 관통하는 15자 내외의 강렬한 자막 훅 (예: 세상을 바꾼 {month_day}의 3가지 사건)",
+            "hook": "{month_day}, 과거의 오늘엔 어떤 일이 있었을까요? 세상을 바꾼 3가지 사건을 만나봅니다.",
+            "issue1_title": "(첫 번째 사건의 화면 노출용 15자 내외 한국어 요약 제목)",
+            "issue1": "(첫 번째 사건에 대한 극적이고 흥미로운 한국어 나레이션, 3-4문장)",
+            "issue2_title": "(두 번째 사건의 화면 노출용 15자 내외 한국어 요약 제목)",
+            "issue2": "(두 번째 사건에 대한 극적이고 흥미로운 한국어 나레이션, 3-4문장)",
+            "issue3_title": "(세 번째 사건의 화면 노출용 15자 내외 한국어 요약 제목)",
+            "issue3": "(세 번째 사건에 대한 극적이고 흥미로운 한국어 나레이션, 3-4문장)",
+            "closing": "(오늘 소개된 3가지 역사적 사건들을 관통하는 깊이 있는 인사이트나 역사적 교훈을 담은 내레이션, 3-4문장)",
+            "closing_quote": "(오늘의 사건들을 꿰뚫는 짧은 한 줄 통찰 또는 명언) - (발언자 혹은 '1분 타임머신')\\n\\n구독과 좋아요 부탁드립니다!"
+        }}
+        
+        이슈 데이터:
+        {context}
+        """
     
     response = client.models.generate_content(
         model='gemini-2.5-pro',

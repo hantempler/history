@@ -31,9 +31,9 @@ def run_tts_gen(target_date, edition='morning'):
         print("Make sure GOOGLE_APPLICATION_CREDENTIALS is set.")
         return None
 
-    # TTS 음색 설정 (한국어 여성 음성 - 출근길 감성)
+    # TTS 음색 설정
     voice = texttospeech.VoiceSelectionParams(
-        language_code="ko-KR",
+        language_code=EDITION_CONFIG[edition].get("language_code", "ko-KR"),
         name=EDITION_CONFIG[edition]["voice_name"] 
     )
     
