@@ -40,7 +40,12 @@ def run_script_gen(target_date=None, edition='morning'):
         
     selection_prompt = f"""
     아래는 과거의 '오늘({month_day})'에 발생했던 전 세계의 역사적 사건들입니다 (영어).
-    이 중에서 한국 유튜브 시청자들이 가장 흥미로워할 만한, 스토리가 극적이거나 유명한 사건 6가지를 우선순위대로 골라주세요.
+    이 중에서 한국 유튜브 시청자들이 가장 흥미로워할 만한 사건 6가지를 우선순위대로 골라주세요.
+    
+    [선정 기준]
+    1. (최우선순위 1~2개) 최근의 시류, 현대 사회의 주요 이슈(예: 경제, 갈등, 기술, 국제 정세 등)와 맞닿아 있어서 오늘날의 시청자들에게 깊은 '인사이트'나 교훈을 줄 수 있는 사건을 반드시 1개 이상 포함하세요.
+    2. (나머지) 스토리가 극적이거나 대중적으로 인지도가 높아 흥미를 끄는 사건.
+    
     선정한 사건의 인덱스 번호를 JSON 배열 형태(예: [12, 45, 10, 5, 8, 90])로만 출력해주세요.
     
     사건 목록:
@@ -111,6 +116,7 @@ def run_script_gen(target_date=None, edition='morning'):
         Conditions:
         1. Output MUST be in JSON format only.
         2. Output ONLY the narration text (no stage directions).
+        3. For at least one of the 3 events, explicitly connect it to current modern trends or issues to provide a poignant insight for today's audience.
         
         Output Format (JSON):
         {{
@@ -142,6 +148,7 @@ def run_script_gen(target_date=None, edition='morning'):
         조건:
         1. 대본은 반드시 JSON 형식으로 출력
         2. 나레이션 텍스트만 출력할 것 (지시문 금지)
+        3. 세 가지 사건 중 최소 한 가지는 현재의 시대상이나 최신 시류와 연결하여 현대인에게 주는 시사점이나 인사이트를 내레이션에 명시적으로 포함할 것.
         
         출력 형식 (JSON):
         {{
@@ -171,12 +178,46 @@ def run_script_gen(target_date=None, edition='morning'):
     )
     
     script_text = response.text.strip()
-    output_path = os.path.join(daily_dir, "3_script.json")
-    with open(output_path, "w", encoding="utf-8") as f:
+    
+    raw_output_path = os.path.join(daily_dir, "3_script_raw.json")
+    with open(raw_output_path, "w", encoding="utf-8") as f:
         f.write(script_text)
         
-    print(f"Generated script saved to {output_path}")
-    return script_text
+    print(f"Generated raw script saved to {raw_output_path}")
+    
+    print("Running fact-check...")
+    if edition == 'history_en':
+        fact_check_instruction = (
+            "You are a meticulous history fact-checker. Please review the provided JSON script generated for a YouTube shorts video. "
+            "Compare it against established historical facts.\n"
+            "If there are any hallucinations, exaggerated claims, or historical inaccuracies, correct them in the script. "
+            "Ensure the tone remains dramatic and engaging, and the format strictly adheres to the original JSON schema.\n"
+            "Output ONLY the fact-checked and corrected JSON without any other commentary."
+        )
+    else:
+        fact_check_instruction = (
+            "당신은 엄격한 역사 팩트체커(Fact-Checker)입니다. 다음 생성된 JSON 대본을 읽고 역사적 사실과 교차 검증하세요.\n"
+            "만약 역사적 사실과 다르거나, 과장되거나, 불확실한 야사가 사실처럼 단정된 부분이 있다면 정사(正史)에 맞게 대본을 수정하세요.\n"
+            "극적인 다큐멘터리 톤은 유지해야 하며, 반드시 원본과 동일한 JSON 포맷으로만 출력하세요. 다른 설명은 붙이지 마세요."
+        )
+        
+    fact_check_response = client.models.generate_content(
+        model='gemini-2.5-pro',
+        contents=script_text,
+        config=types.GenerateContentConfig(
+            system_instruction=fact_check_instruction,
+            response_mime_type="application/json",
+        )
+    )
+    
+    final_script_text = fact_check_response.text.strip()
+    
+    output_path = os.path.join(daily_dir, "3_script.json")
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(final_script_text)
+        
+    print(f"Fact-checked script saved to {output_path}")
+    return final_script_text
 
 if __name__ == "__main__":
     run_script_gen()

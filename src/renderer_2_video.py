@@ -46,6 +46,16 @@ def create_pil_subtitle_clip(text, font_path, fontsize, temp_dir):
     
     bbox = draw.multiline_textbbox((0, 0), text, font=font, spacing=10)
     text_w = bbox[2] - bbox[0]
+    
+    while text_w > 980 and fontsize > 30:
+        fontsize -= 2
+        try:
+            font = ImageFont.truetype(font_path, fontsize)
+        except IOError:
+            break
+        bbox = draw.multiline_textbbox((0, 0), text, font=font, spacing=10)
+        text_w = bbox[2] - bbox[0]
+        
     text_h = bbox[3] - bbox[1]
     
     x = (canvas_w - text_w) / 2

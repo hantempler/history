@@ -6,7 +6,7 @@ from datetime import datetime
 # Add src to Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.scraper import scrape_naver_ranking_news
+# from src.scraper import scrape_naver_ranking_news
 from src.script_gen import run_script_gen
 from src.tts_gen import run_tts_gen
 from src.renderer_1_thumb import run_renderer_thumb

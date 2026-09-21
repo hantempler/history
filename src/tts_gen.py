@@ -23,6 +23,8 @@ def run_tts_gen(target_date, edition='morning'):
             print("Failed to decode JSON from 3_script.json")
             return None
 
+    import random
+    
     # Google Cloud TTS 클라이언트 초기화
     try:
         client = texttospeech.TextToSpeechClient()
@@ -32,9 +34,11 @@ def run_tts_gen(target_date, edition='morning'):
         return None
 
     # TTS 음색 설정
+    selected_voice = random.choice(EDITION_CONFIG[edition]["voice_names"])
+    print(f"Selected TTS voice: {selected_voice}")
     voice = texttospeech.VoiceSelectionParams(
         language_code=EDITION_CONFIG[edition].get("language_code", "ko-KR"),
-        name=EDITION_CONFIG[edition]["voice_name"] 
+        name=selected_voice
     )
     
     audio_config = texttospeech.AudioConfig(

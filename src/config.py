@@ -22,7 +22,8 @@ ASSETS_DIR = os.path.join(BASE_DIR, "assets")
 EDITION_CONFIG = {
     "history": {
         "data_dir": os.path.join(BASE_DIR, "data", "history"),
-        "voice_name": "ko-KR-Wavenet-D",
+        "voice_names": ["ko-KR-Wavenet-D", "ko-KR-Wavenet-C", "ko-KR-Wavenet-A", "ko-KR-Wavenet-B"],
+        "bg_images": ["vintage_bg.jpg", "dark_paper_bg.jpg", "stone_bg.jpg", "ancient_map_bg.jpg", "leather_book_bg.jpg", "cave_wall_bg.jpg", "bronze_metal_bg.jpg"],
         "language_code": "ko-KR",
         "top_title": "1분 타임머신",
         "video_suffix": "_역사속오늘.mp4",
@@ -32,7 +33,8 @@ EDITION_CONFIG = {
     },
     "history_en": {
         "data_dir": os.path.join(BASE_DIR, "data", "history_en"),
-        "voice_name": "en-US-Journey-F",
+        "voice_names": ["en-US-Journey-F", "en-US-Journey-D", "en-US-Neural2-F", "en-US-Neural2-J"],
+        "bg_images": ["vintage_bg.jpg", "dark_paper_bg.jpg", "stone_bg.jpg", "ancient_map_bg.jpg", "leather_book_bg.jpg", "cave_wall_bg.jpg", "bronze_metal_bg.jpg"],
         "language_code": "en-US",
         "top_title": "1 Min Time Machine",
         "video_suffix": "_on_this_day.mp4",

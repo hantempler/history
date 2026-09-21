@@ -62,6 +62,7 @@ def split_title_smart(title_text):
     return " ".join(words[:best_split]) + "\n" + " ".join(words[best_split:])
 
 def create_pil_text_clip(text, font_path, fontsize, temp_dir, text_type="title", source_text="", date_str="", top_title=""):
+    text = re.sub(r'[^\w\s\.\,\!\?\-\'\"\[\]\(\)\<\>\n가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z0-9]', ' ', text)
     try:
         font = ImageFont.truetype(font_path, fontsize)
     except IOError:
@@ -264,9 +265,9 @@ def create_pil_text_clip(text, font_path, fontsize, temp_dir, text_type="title",
     clip = ImageClip(temp_path)
     return clip
 
-def make_bg_clip(img_path, source_text, title_text, font_path, temp_dir, part_name=None, center_text=None, date_str="", top_title=""):
+def make_bg_clip(img_path, source_text, title_text, font_path, temp_dir, part_name=None, center_text=None, date_str="", top_title="", bg_image_name="vintage_bg.jpg"):
     from config import ASSETS_DIR
-    vintage_bg_path = os.path.join(ASSETS_DIR, "vintage_bg.jpg")
+    vintage_bg_path = os.path.join(ASSETS_DIR, bg_image_name)
     
     if os.path.exists(vintage_bg_path):
         bg_pil = Image.open(vintage_bg_path).convert('RGB')
@@ -379,6 +380,10 @@ def run_renderer_thumb(target_date=None, edition='morning'):
         
     top_title = EDITION_CONFIG[edition]["top_title"]
     
+    import random
+    selected_bg = random.choice(EDITION_CONFIG[edition].get("bg_images", ["vintage_bg.jpg"]))
+    print(f"Selected Background Image: {selected_bg}")
+    
     for part in parts:
         if part not in script_data:
             continue
@@ -409,7 +414,7 @@ def run_renderer_thumb(target_date=None, edition='morning'):
         elif part == "hook":
             center_text = script_data.get("hook_title")
                 
-        bg_clip = make_bg_clip(img_path, source_text, title_text, font_path, temp_dir, part_name=part, center_text=center_text, date_str=display_date_str, top_title=top_title)
+        bg_clip = make_bg_clip(img_path, source_text, title_text, font_path, temp_dir, part_name=part, center_text=center_text, date_str=display_date_str, top_title=top_title, bg_image_name=selected_bg)
         
         thumb_path = os.path.join(daily_dir, f"6_thumb_{part}.png")
         bg_clip.save_frame(thumb_path, t=0.0)

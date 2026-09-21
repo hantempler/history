@@ -92,6 +92,7 @@ def split_title_smart(title_text):
     return " ".join(words[:best_split]) + "\n" + " ".join(words[best_split:])
 
 def create_pil_text_clip(text, font_path, fontsize, duration, temp_dir, text_type="subtitle", source_text="", date_str="", top_title=""):
+    text = re.sub(r'[^\w\s\.\,\!\?\-\'\"\[\]\(\)\<\>\n가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z0-9]', ' ', text)
     try:
         font = ImageFont.truetype(font_path, fontsize)
     except IOError:
