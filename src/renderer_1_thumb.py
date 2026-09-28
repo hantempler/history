@@ -62,7 +62,7 @@ def split_title_smart(title_text):
     return " ".join(words[:best_split]) + "\n" + " ".join(words[best_split:])
 
 def create_pil_text_clip(text, font_path, fontsize, temp_dir, text_type="title", source_text="", date_str="", top_title=""):
-    text = re.sub(r'[^\w\s\.\,\!\?\-\'\"\[\]\(\)\<\>\n가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z0-9]', ' ', text)
+    text = re.sub(r'[^\w\s\.\,\!\?\-\'\"\[\]\(\)\<\>\|\n가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z0-9]', ' ', text)
     try:
         font = ImageFont.truetype(font_path, fontsize)
     except IOError:
@@ -306,12 +306,15 @@ def make_bg_clip(img_path, source_text, title_text, font_path, temp_dir, part_na
         elif part_name == "closing":
             if "-" in center_text:
                 parts = center_text.rsplit("-", 1)
-                center_text = f'"{parts[0].strip()}"\n\n- {parts[1].strip()}'
+                quote_part = parts[0].strip().strip('"').strip("'")
+                center_text = f'"{quote_part}"\n\n- {parts[1].strip()}'
             elif "–" in center_text:
                 parts = center_text.rsplit("–", 1)
-                center_text = f'"{parts[0].strip()}"\n\n- {parts[1].strip()}'
+                quote_part = parts[0].strip().strip('"').strip("'")
+                center_text = f'"{quote_part}"\n\n- {parts[1].strip()}'
             else:
-                center_text = f'"{center_text.strip()}"'
+                quote_part = center_text.strip().strip('"').strip("'")
+                center_text = f'"{quote_part}"'
             center_clip = create_pil_text_clip(center_text, font_path, 60, temp_dir, text_type="quote")
         else:
             center_clip = None
