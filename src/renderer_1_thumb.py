@@ -405,7 +405,10 @@ def run_renderer_thumb(target_date=None, edition='morning'):
                 title_text = script_data.get(f"{part}_title", article.get("text"))
                 event_year = article.get("year")
                 if event_year and month_day_str:
-                    display_date_str = f"{event_year}년 {month_day_str}"
+                    if edition == 'history_en':
+                        display_date_str = f"{month_day_str}, {event_year}"
+                    else:
+                        display_date_str = f"{event_year}년 {month_day_str}"
                 
                 # 강제로 노란색 타이틀 끝에 (연도) 추가
                 if event_year and f"({event_year})" not in title_text:
