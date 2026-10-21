@@ -84,8 +84,8 @@ def apply_top_soft_gradient(img):
     grad = Image.new("L", (1, h), 0)
     pix = grad.load()
     for y in range(h):
-        if y < 350:
-            pix[0, y] = int(175 * (1.0 - y / 350.0))
+        if y < 460:
+            pix[0, y] = int(185 * (1.0 - y / 460.0))
         else:
             pix[0, y] = 0
     grad = grad.resize((w, h))
@@ -116,51 +116,56 @@ WEEKDAY_CORNERS_MATRIX = [
 ]
 
 # -------------------------------------------------------------
-# 2. [0~3초] PRJ_1min_knowledge 표지 인트로 생성
+# 2. [0~3초] PRJ_1min_knowledge 표지 인트로 생성 (시안 A: 고대비 글래스 알약)
 # -------------------------------------------------------------
 def render_intro_cover_image(bg_path, header_str, highlight_cat, main_title, why_title=None, why_desc=None):
     base_img = load_and_fill_fullscreen(bg_path)
     base_img = apply_intro_gradient(base_img)
     draw = ImageDraw.Draw(base_img)
 
-    font_header = ImageFont.truetype(FONT_PATH, 38)
-    font_badge = ImageFont.truetype(FONT_PATH, 25)
+    font_header = ImageFont.truetype(FONT_PATH, 36)
+    font_badge = ImageFont.truetype(FONT_PATH, 26)
+    font_badge_bold = ImageFont.truetype(FONT_PATH, 27)
     font_title = ImageFont.truetype(FONT_PATH, 66)
 
-    # 1. 상단 날짜 및 헤더 (여유로운 Y=110 상단 안전구역)
+    # 1. 상단 날짜 및 헤더 (쇼츠 플레이어 컨트롤러 회피 Y=180 안전구역)
     h_bb = draw.textbbox((0, 0), header_str, font=font_header)
-    draw.text((int((CANVAS_W - (h_bb[2]-h_bb[0])) // 2), 110), header_str, font=font_header, fill=(255, 255, 255, 255), stroke_width=2, stroke_fill='black')
+    draw.text((int((CANVAS_W - (h_bb[2]-h_bb[0])) // 2), 180), header_str, font=font_header, fill=(255, 255, 255, 255), stroke_width=3, stroke_fill='black')
 
-    # 2. 요일별 7대 코너 2줄 캡슐 매트릭스 (고대비 분별력 & 25pt 볼드 대형화)
-    pill_w = 230
-    pill_h = 50
-    pill_gap_x = 16
-    pill_gap_y = 14
-    start_y = 185
+    # 2. 요일별 7대 코너 2줄 캡슐 매트릭스 (시안 A: 236/250x54 고대비 글래스 알약)
+    pill_w_r1 = 236
+    pill_w_r2 = 250
+    pill_h = 54
+    gap_x = 16
+    gap_y = 14
+    start_y = 245
 
     for r_idx, row in enumerate(WEEKDAY_CORNERS_MATRIX):
-        row_w = len(row) * pill_w + (len(row) - 1) * pill_gap_x
+        pw = pill_w_r1 if r_idx == 0 else pill_w_r2
+        row_w = len(row) * pw + (len(row) - 1) * gap_x
         row_start_x = (CANVAS_W - row_w) / 2
-        curr_y = start_y + r_idx * (pill_h + pill_gap_y)
+        curr_y = start_y + r_idx * (pill_h + gap_y)
 
         for c_idx, corner in enumerate(row):
-            curr_x = row_start_x + c_idx * (pill_w + pill_gap_x)
-            box = [int(curr_x), int(curr_y), int(curr_x + pill_w), int(curr_y + pill_h)]
+            curr_x = row_start_x + c_idx * (pw + gap_x)
+            box = [int(curr_x), int(curr_y), int(curr_x + pw), int(curr_y + pill_h)]
             is_match = (corner == highlight_cat) or (highlight_cat in corner) or (corner in highlight_cat)
             if is_match:
-                draw.rounded_rectangle(box, radius=pill_h//2, fill=(255, 212, 0, 255), outline=(255, 255, 255, 220), width=2)
-                t_bb = draw.textbbox((0, 0), corner, font=font_badge)
-                tx = curr_x + (pill_w - (t_bb[2]-t_bb[0]))/2
+                # 활성 코너 (오늘자 편성): 골드(#FFD400) + 순백 외곽선 + 볼드 블랙 텍스트
+                draw.rounded_rectangle(box, radius=pill_h//2, fill=(255, 212, 0, 255), outline=(255, 255, 255, 255), width=2)
+                t_bb = draw.textbbox((0, 0), corner, font=font_badge_bold)
+                tx = curr_x + (pw - (t_bb[2]-t_bb[0]))/2
                 ty = curr_y + (pill_h - (t_bb[3]-t_bb[1]))/2 - 2
-                draw.text((int(tx), int(ty)), corner, font=font_badge, fill=(10, 14, 20))
+                draw.text((int(tx), int(ty)), corner, font=font_badge_bold, fill=(12, 16, 24))
             else:
-                draw.rounded_rectangle(box, radius=pill_h//2, fill=(10, 14, 24, 230), outline=(255, 255, 255, 120), width=1)
+                # 비활성 코너: 딥슬레이트 차콜(94% 불투명) + 화이트 외곽선(170) + 또렷한 화이트 텍스트
+                draw.rounded_rectangle(box, radius=pill_h//2, fill=(15, 22, 35, 240), outline=(255, 255, 255, 170), width=2)
                 t_bb = draw.textbbox((0, 0), corner, font=font_badge)
-                tx = curr_x + (pill_w - (t_bb[2]-t_bb[0]))/2
+                tx = curr_x + (pw - (t_bb[2]-t_bb[0]))/2
                 ty = curr_y + (pill_h - (t_bb[3]-t_bb[1]))/2 - 2
-                draw.text((int(tx), int(ty)), corner, font=font_badge, fill=(255, 255, 255, 255))
+                draw.text((int(tx), int(ty)), corner, font=font_badge, fill=(255, 255, 255), stroke_width=1, stroke_fill=(0, 0, 0, 160))
 
-    # 3. 중앙 대형 메인 타이틀 (시원하게 위용을 드러내는 골든 존 배치)
+    # 3. 중앙 대형 메인 타이틀 (골든 존 배치)
     clean_title = main_title.strip()
     if len(clean_title) > 16 and "\n" not in clean_title:
         mid = len(clean_title) // 2
@@ -172,7 +177,7 @@ def render_intro_cover_image(bg_path, header_str, highlight_cat, main_title, why
     title_box = draw.multiline_textbbox((0, 0), clean_title, font=font_title, spacing=18)
     tw = title_box[2] - title_box[0]
     th = title_box[3] - title_box[1]
-    title_y = 570 if len(lines) > 1 else 620
+    title_y = 620 if len(lines) > 1 else 650
     draw.multiline_text((int((CANVAS_W - tw) // 2), int(title_y)), clean_title, font=font_title, fill='#FFD700', align='center', spacing=18, stroke_width=5, stroke_fill='black')
 
     return base_img
@@ -186,7 +191,7 @@ def draw_body_minimal_header(draw, corner_name, event_date_title):
     font_date = ImageFont.truetype(FONT_PATH, 30)
     font_title = ImageFont.truetype(FONT_PATH, 38)
 
-    # 1. 코너 알약 배지: 상단 노치 안전영역 (Y=115, 중앙 정렬)
+    # 1. 코너 알약 배지: 상단 노치 안전영역 (Y=180, 중앙 정렬)
     cb_bbox = draw.textbbox((0, 0), corner_name, font=font_badge)
     cb_w = cb_bbox[2] - cb_bbox[0]
     cb_h = cb_bbox[3] - cb_bbox[1]
@@ -194,7 +199,7 @@ def draw_body_minimal_header(draw, corner_name, event_date_title):
     pill_w = cb_w + 34
     pill_h = 44
     pill_x = (CANVAS_W - pill_w) / 2
-    pill_y = 115
+    pill_y = 180
 
     draw.rounded_rectangle([int(pill_x), int(pill_y), int(pill_x + pill_w), int(pill_y + pill_h)], radius=pill_h // 2, fill=(*corner_bg, 245))
     text_col = (18, 22, 32) if (corner_bg[0]*0.299 + corner_bg[1]*0.587 + corner_bg[2]*0.114) > 130 else (255, 255, 255)
@@ -216,15 +221,15 @@ def draw_body_minimal_header(draw, corner_name, event_date_title):
             date_part = ""
             title_part = event_date_title.strip()
 
-    # 날짜 렌더링 (1행: Y=175, 샴페인 골드, 30pt)
-    current_y = 175
+    # 날짜 렌더링 (1행: Y=240, 샴페인 골드, 30pt)
+    current_y = 240
     if date_part:
         dt_bb = draw.textbbox((0, 0), date_part, font=font_date)
         dt_w = dt_bb[2] - dt_bb[0]
         draw.text((int((CANVAS_W - dt_w) // 2), int(current_y)), date_part, font=font_date, fill=(255, 232, 163), stroke_width=3, stroke_fill='black')
-        current_y += 42
+        current_y += 45
 
-    # 제목 렌더링: 820px 이내로 단어 단위 줄바꿈 (2~3행: 38pt 화이트)
+    # 제목 렌더링: 820px 이내로 단어 단위 줄바꿈 (2~3행: 38pt 화이트, Y=285)
     words = title_part.strip().split()
     wrapped_title = []
     cur_line = []
@@ -242,7 +247,10 @@ def draw_body_minimal_header(draw, corner_name, event_date_title):
 
     t_box = draw.multiline_textbbox((0, 0), clean_title, font=font_title, spacing=10)
     tw = t_box[2] - t_box[0]
+    th = t_box[3] - t_box[1]
     draw.multiline_text((int((CANVAS_W - tw) // 2), int(current_y)), clean_title, font=font_title, fill=(255, 255, 255, 250), align='center', spacing=10, stroke_width=3, stroke_fill='black')
+
+    return current_y + th
 
 # -------------------------------------------------------------
 # 3. 자막 청크 분할 (외톨이 단어 원천 차단)
@@ -392,25 +400,40 @@ def render_subtitle_png(text, out_png):
     img.save(out_png, "PNG")
 
 # -------------------------------------------------------------
-# 5. 이미지 출처 상향 배치 (플레이어 UI 위 안전구역 Y=1680)
+# 5. 이미지 출처 및 고증 라벨 (상단 제목 직하단 또는 아웃트로 하단)
 # -------------------------------------------------------------
-def draw_credit_safe_zone(draw, credit_str, caption_str=None, image_type="archive"):
+def draw_credit_safe_zone(draw, credit_str, caption_str=None, image_type="archive", start_y=None, center=True):
     if not credit_str and not caption_str:
         return
-    x = 55
-    # 1행 (Y=1632): 사료/고증 복원 설명 라벨 (28pt, 샴페인 골드)
-    if caption_str:
-        font_cap = ImageFont.truetype(FONT_PATH, 28)
-        prefix = "사료: " if image_type == "archive" else "고증 복원: "
-        cap_full = f"{prefix}{caption_str}"
-        draw.text((x, 1632), cap_full, font=font_cap, fill=(255, 232, 163), stroke_width=3, stroke_fill='black')
+    if start_y is not None:
+        cur_y = start_y
+        if caption_str:
+            font_cap = ImageFont.truetype(FONT_PATH, 25)
+            prefix = "사료: " if image_type == "archive" else "고증 복원: "
+            cap_full = f"{prefix}{caption_str}"
+            cb = draw.textbbox((0, 0), cap_full, font=font_cap)
+            cw = cb[2] - cb[0]
+            cx = (CANVAS_W - cw) // 2 if center else 55
+            draw.text((int(cx), int(cur_y)), cap_full, font=font_cap, fill=(255, 235, 175), stroke_width=2, stroke_fill='black')
+            cur_y += 35
 
-    # 2행 (Y=1675): 라이선스 출처 또는 제작 정보 (22pt, 소프트 실버)
-    if credit_str:
-        font_credit = ImageFont.truetype(FONT_PATH, 22 if caption_str else 24)
-        y = 1675 if caption_str else 1680
-        color = (210, 218, 230) if caption_str else (245, 248, 252)
-        draw.text((x, y), credit_str, font=font_credit, fill=color, stroke_width=2, stroke_fill='black')
+        if credit_str:
+            font_credit = ImageFont.truetype(FONT_PATH, 21)
+            cb = draw.textbbox((0, 0), credit_str, font=font_credit)
+            cw = cb[2] - cb[0]
+            cx = (CANVAS_W - cw) // 2 if center else 55
+            draw.text((int(cx), int(cur_y)), credit_str, font=font_credit, fill=(215, 225, 238), stroke_width=2, stroke_fill='black')
+    else:
+        x = 55
+        if caption_str:
+            font_cap = ImageFont.truetype(FONT_PATH, 25)
+            prefix = "사료: " if image_type == "archive" else "고증 복원: "
+            cap_full = f"{prefix}{caption_str}"
+            draw.text((x, 1632), cap_full, font=font_cap, fill=(255, 232, 163), stroke_width=3, stroke_fill='black')
+        if credit_str:
+            font_credit = ImageFont.truetype(FONT_PATH, 21)
+            y = 1675 if caption_str else 1680
+            draw.text((x, y), credit_str, font=font_credit, fill=(210, 218, 230), stroke_width=2, stroke_fill='black')
 
 # -------------------------------------------------------------
 # 6. 아웃트로 3단 피날레 이미지 (3.0s)
@@ -490,8 +513,8 @@ def render_body_scene_chunk(bg_path, corner_name, date_title, credit_str, tts_te
     base_img = load_and_fill_fullscreen(bg_path)
     base_img = apply_top_soft_gradient(base_img)
     draw = ImageDraw.Draw(base_img)
-    draw_body_minimal_header(draw, corner_name, date_title)
-    draw_credit_safe_zone(draw, credit_str, caption_str, image_type)
+    header_bottom_y = draw_body_minimal_header(draw, corner_name, date_title)
+    draw_credit_safe_zone(draw, credit_str, caption_str, image_type, start_y=header_bottom_y + 16, center=True)
     base_bg_png = os.path.join(temp_dir, "base_bg.png")
     base_img.convert("RGB").save(base_bg_png, "PNG")
 
@@ -516,7 +539,7 @@ def render_body_scene_chunk(bg_path, corner_name, date_title, credit_str, tts_te
     vf.append("format=yuv420p")
 
     for _, st, en in sub_png_info:
-        vf.append(f"overlay=(W-w)/2:1350:enable='between(t,{st:.3f},{en:.3f})'")
+        vf.append(f"overlay=(W-w)/2:1260:enable='between(t,{st:.3f},{en:.3f})'")
 
     cmd = [
         FFMPEG, "-y", "-loglevel", "error",
