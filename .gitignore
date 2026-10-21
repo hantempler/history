@@ -16,11 +16,19 @@ config/gdrive_token.json
 config/youtube_token.json
 client_secret*.json
 config/git_hub_code
+history_deepdive/config/application_default_credentials.json
+history_deepdive/config/youtube_token.json
+history_deepdive/config/.env
 
 # Data & Heavy Media Files
 data/
+data_v2/
+data_v3/
+history_deepdive/data/
 *.mp4
 *.mp3
+*.db
+*.sqlite*
 
 # Logs
 logs/
@@ -29,5 +37,12 @@ logs/
 # OS generated files
 .DS_Store
 
+# Assets & BGM exceptions
 !assets/
 !assets/*
+!assets/**
+!history_deepdive/assets/
+!history_deepdive/assets/*
+!history_deepdive/assets/**
+!history_deepdive/assets/bgm/*.mp3
+!assets/bgm/*.mp3

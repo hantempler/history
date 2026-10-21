@@ -1,0 +1,372 @@
+{
+  "bgm_history_epic": {
+    "id": "bgm_history_epic",
+    "filename": "bgm_history_epic.mp3",
+    "url": null,
+    "title": "Epic Historical Chronicle",
+    "artist": "Royalty Free Archive",
+    "mood": "epic",
+    "license": "Royalty Free",
+    "credit_text": "Music: Epic Historical Chronicle - Royalty Free"
+  },
+  "impactprelude": {
+    "id": "impactprelude",
+    "filename": "impact_prelude.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Impact%20Prelude.mp3",
+    "title": "Impact Prelude",
+    "artist": "Kevin MacLeod",
+    "mood": "epic",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"Impact Prelude\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "fivearmies": {
+    "id": "fivearmies",
+    "filename": "five_armies.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Five%20Armies.mp3",
+    "title": "Five Armies",
+    "artist": "Kevin MacLeod",
+    "mood": "epic",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"Five Armies\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "calltoadventure": {
+    "id": "calltoadventure",
+    "filename": "call_to_adventure.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Call%20to%20Adventure.mp3",
+    "title": "Call to Adventure",
+    "artist": "Kevin MacLeod",
+    "mood": "epic",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"Call to Adventure\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "devastationandrevenge": {
+    "id": "devastationandrevenge",
+    "filename": "devastation_and_revenge.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Devastation%20and%20Revenge.mp3",
+    "title": "Devastation and Revenge",
+    "artist": "Kevin MacLeod",
+    "mood": "epic",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"Devastation and Revenge\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "clashdefiant": {
+    "id": "clashdefiant",
+    "filename": "clash_defiant.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Clash%20Defiant.mp3",
+    "title": "Clash Defiant",
+    "artist": "Kevin MacLeod",
+    "mood": "epic",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"Clash Defiant\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "stormfront": {
+    "id": "stormfront",
+    "filename": "stormfront.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Stormfront.mp3",
+    "title": "Stormfront",
+    "artist": "Kevin MacLeod",
+    "mood": "epic",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"Stormfront\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "finalbattleofthedarkwizards": {
+    "id": "finalbattleofthedarkwizards",
+    "filename": "final_battle_of_the_dark_wizards.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Final%20Battle%20of%20the%20Dark%20Wizards.mp3",
+    "title": "Final Battle of the Dark Wizards",
+    "artist": "Kevin MacLeod",
+    "mood": "epic",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"Final Battle of the Dark Wizards\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "despairandtriumph": {
+    "id": "despairandtriumph",
+    "filename": "despair_and_triumph.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Despair%20and%20Triumph.mp3",
+    "title": "Despair and Triumph",
+    "artist": "Kevin MacLeod",
+    "mood": "triumphant",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"Despair and Triumph\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "reignsupreme": {
+    "id": "reignsupreme",
+    "filename": "reign_supreme.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Reign%20Supreme.mp3",
+    "title": "Reign Supreme",
+    "artist": "Kevin MacLeod",
+    "mood": "triumphant",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"Reign Supreme\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "aceshigh": {
+    "id": "aceshigh",
+    "filename": "aces_high.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Aces%20High.mp3",
+    "title": "Aces High",
+    "artist": "Kevin MacLeod",
+    "mood": "triumphant",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"Aces High\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "herodown": {
+    "id": "herodown",
+    "filename": "hero_down.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Hero%20Down.mp3",
+    "title": "Hero Down",
+    "artist": "Kevin MacLeod",
+    "mood": "dramatic",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"Hero Down\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "killers": {
+    "id": "killers",
+    "filename": "killers.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Killers.mp3",
+    "title": "Killers",
+    "artist": "Kevin MacLeod",
+    "mood": "dramatic",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"Killers\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "minima": {
+    "id": "minima",
+    "filename": "minima.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Minima.mp3",
+    "title": "Minima",
+    "artist": "Kevin MacLeod",
+    "mood": "dramatic",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"Minima\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "nightofchaos": {
+    "id": "nightofchaos",
+    "filename": "night_of_chaos.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Night%20of%20Chaos.mp3",
+    "title": "Night of Chaos",
+    "artist": "Kevin MacLeod",
+    "mood": "dramatic",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"Night of Chaos\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "wounded": {
+    "id": "wounded",
+    "filename": "wounded.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Wounded.mp3",
+    "title": "Wounded",
+    "artist": "Kevin MacLeod",
+    "mood": "dramatic",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"Wounded\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "thedescent": {
+    "id": "thedescent",
+    "filename": "the_descent.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/The%20Descent.mp3",
+    "title": "The Descent",
+    "artist": "Kevin MacLeod",
+    "mood": "dramatic",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"The Descent\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "darkling": {
+    "id": "darkling",
+    "filename": "darkling.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Darkling.mp3",
+    "title": "Darkling",
+    "artist": "Kevin MacLeod",
+    "mood": "mystery",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"Darkling\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "division": {
+    "id": "division",
+    "filename": "division.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Division.mp3",
+    "title": "Division",
+    "artist": "Kevin MacLeod",
+    "mood": "mystery",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"Division\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "ghoststory": {
+    "id": "ghoststory",
+    "filename": "ghost_story.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Ghost%20Story.mp3",
+    "title": "Ghost Story",
+    "artist": "Kevin MacLeod",
+    "mood": "mystery",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"Ghost Story\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "thishouse": {
+    "id": "thishouse",
+    "filename": "this_house.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/This%20House.mp3",
+    "title": "This House",
+    "artist": "Kevin MacLeod",
+    "mood": "mystery",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"This House\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "unansweredquestions": {
+    "id": "unansweredquestions",
+    "filename": "unanswered_questions.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Unanswered%20Questions.mp3",
+    "title": "Unanswered Questions",
+    "artist": "Kevin MacLeod",
+    "mood": "mystery",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"Unanswered Questions\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "achaidhcheide": {
+    "id": "achaidhcheide",
+    "filename": "achaidh_cheide.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Achaidh%20Cheide.mp3",
+    "title": "Achaidh Cheide",
+    "artist": "Kevin MacLeod",
+    "mood": "mystery",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"Achaidh Cheide\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "ancientrite": {
+    "id": "ancientrite",
+    "filename": "ancient_rite.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Ancient%20Rite.mp3",
+    "title": "Ancient Rite",
+    "artist": "Kevin MacLeod",
+    "mood": "mystery",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"Ancient Rite\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "volatilereaction": {
+    "id": "volatilereaction",
+    "filename": "volatile_reaction.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Volatile%20Reaction.mp3",
+    "title": "Volatile Reaction",
+    "artist": "Kevin MacLeod",
+    "mood": "suspense",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"Volatile Reaction\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "hiddenagenda": {
+    "id": "hiddenagenda",
+    "filename": "hidden_agenda.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Hidden%20Agenda.mp3",
+    "title": "Hidden Agenda",
+    "artist": "Kevin MacLeod",
+    "mood": "suspense",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"Hidden Agenda\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "interloper": {
+    "id": "interloper",
+    "filename": "interloper.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Interloper.mp3",
+    "title": "Interloper",
+    "artist": "Kevin MacLeod",
+    "mood": "suspense",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"Interloper\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "darknessiscoming": {
+    "id": "darknessiscoming",
+    "filename": "darkness_is_coming.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Darkness%20is%20Coming.mp3",
+    "title": "Darkness is Coming",
+    "artist": "Kevin MacLeod",
+    "mood": "suspense",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"Darkness is Coming\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "gatheringdarkness": {
+    "id": "gatheringdarkness",
+    "filename": "gathering_darkness.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Gathering%20Darkness.mp3",
+    "title": "Gathering Darkness",
+    "artist": "Kevin MacLeod",
+    "mood": "suspense",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"Gathering Darkness\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "impendingboom": {
+    "id": "impendingboom",
+    "filename": "impending_boom.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Impending%20Boom.mp3",
+    "title": "Impending Boom",
+    "artist": "Kevin MacLeod",
+    "mood": "suspense",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"Impending Boom\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "oppressivegloom": {
+    "id": "oppressivegloom",
+    "filename": "oppressive_gloom.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Oppressive%20Gloom.mp3",
+    "title": "Oppressive Gloom",
+    "artist": "Kevin MacLeod",
+    "mood": "suspense",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"Oppressive Gloom\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "heartbreaking": {
+    "id": "heartbreaking",
+    "filename": "heartbreaking.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Heartbreaking.mp3",
+    "title": "Heartbreaking",
+    "artist": "Kevin MacLeod",
+    "mood": "somber",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"Heartbreaking\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "atrest": {
+    "id": "atrest",
+    "filename": "at_rest.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/At%20Rest.mp3",
+    "title": "At Rest",
+    "artist": "Kevin MacLeod",
+    "mood": "somber",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"At Rest\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "crypticsorrow": {
+    "id": "crypticsorrow",
+    "filename": "cryptic_sorrow.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Cryptic%20Sorrow.mp3",
+    "title": "Cryptic Sorrow",
+    "artist": "Kevin MacLeod",
+    "mood": "somber",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"Cryptic Sorrow\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "nightvigil": {
+    "id": "nightvigil",
+    "filename": "night_vigil.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Night%20Vigil.mp3",
+    "title": "Night Vigil",
+    "artist": "Kevin MacLeod",
+    "mood": "somber",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"Night Vigil\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "constance": {
+    "id": "constance",
+    "filename": "constance.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Constance.mp3",
+    "title": "Constance",
+    "artist": "Kevin MacLeod",
+    "mood": "somber",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"Constance\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  },
+  "anguish": {
+    "id": "anguish",
+    "filename": "anguish.mp3",
+    "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Anguish.mp3",
+    "title": "Anguish",
+    "artist": "Kevin MacLeod",
+    "mood": "somber",
+    "license": "CC-BY 4.0",
+    "credit_text": "\"Anguish\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  }
+}
