@@ -116,7 +116,9 @@ def build_video_metadata(script_data: dict, script_path: str = "") -> dict:
         # 실제 오디오 길이 확인 (없으면 기본 11초)
         scene_dur = 11
         if script_dir:
-            aud_p = os.path.join(script_dir, "audio", f"scene_{s_num}.mp3")
+            aud_p1 = os.path.join(script_dir, "audio", f"scene{s_num}.mp3")
+            aud_p2 = os.path.join(script_dir, "audio", f"scene_{s_num}.mp3")
+            aud_p = aud_p1 if os.path.exists(aud_p1) else aud_p2
             if os.path.exists(aud_p):
                 scene_dur = int(round(get_audio_duration_sec(aud_p)))
         accum_sec += max(8, scene_dur)
