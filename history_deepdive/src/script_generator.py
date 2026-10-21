@@ -205,6 +205,7 @@ def generate_masterpiece_script(routed_data: dict, out_dir: str) -> dict:
     {{
       "scene_number": 1,
       "display_title": "씬 1 소제목",
+      "summary": "유튜브 설명란용 해당 씬 1줄 핵심 사건 요약 (20~25자 내외)",
       "script": "씬 1 나레이션 문장 (TTS/자막 100% 일치)",
       "image_search_keyword": "영문 사료 검색어",
       "image_caption": "한국어 사료 간략 설명 (15자 이내)",
@@ -213,6 +214,7 @@ def generate_masterpiece_script(routed_data: dict, out_dir: str) -> dict:
     {{
       "scene_number": 2,
       "display_title": "씬 2 소제목",
+      "summary": "유튜브 설명란용 해당 씬 1줄 핵심 사건 요약 (20~25자 내외)",
       "script": "씬 2 나레이션 문장",
       "image_search_keyword": "영문 사료 검색어",
       "image_caption": "한국어 사료 간략 설명 (15자 이내)",
@@ -221,6 +223,7 @@ def generate_masterpiece_script(routed_data: dict, out_dir: str) -> dict:
     {{
       "scene_number": 3,
       "display_title": "씬 3 소제목",
+      "summary": "유튜브 설명란용 해당 씬 1줄 핵심 사건 요약 (20~25자 내외)",
       "script": "씬 3 나레이션 문장",
       "image_search_keyword": "영문 사료 검색어",
       "image_caption": "한국어 사료 간략 설명 (15자 이내)",
@@ -229,6 +232,7 @@ def generate_masterpiece_script(routed_data: dict, out_dir: str) -> dict:
     {{
       "scene_number": 4,
       "display_title": "씬 4 소제목",
+      "summary": "유튜브 설명란용 해당 씬 1줄 핵심 사건 요약 (20~25자 내외)",
       "script": "씬 4 나레이션 문장",
       "image_search_keyword": "영문 사료 검색어",
       "image_caption": "한국어 사료 간략 설명 (15자 이내)",
@@ -237,6 +241,7 @@ def generate_masterpiece_script(routed_data: dict, out_dir: str) -> dict:
     {{
       "scene_number": 5,
       "display_title": "씬 5 소제목",
+      "summary": "유튜브 설명란용 해당 씬 1줄 핵심 사건 요약 (20~25자 내외)",
       "script": "씬 5 나레이션 문장",
       "image_search_keyword": "영문 사료 검색어",
       "image_caption": "한국어 사료 간략 설명 (15자 이내)",
@@ -355,6 +360,7 @@ def generate_masterpiece_script(routed_data: dict, out_dir: str) -> dict:
       {{
         "scene_number": 1,
         "display_title": "...",
+        "summary": "1줄 핵심 요약 (20자 내외)",
         "script": "...",
         "image_search_keyword": "...",
         "image_caption": "한국어 사료 간략 설명 (15자 이내)",

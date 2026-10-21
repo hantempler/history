@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import re
 from pathlib import Path
 from datetime import datetime
 
@@ -34,7 +35,7 @@ def build_service():
     return build("youtube", "v3", credentials=creds)
 
 
-def build_video_metadata(script_data: dict) -> dict:
+def build_video_metadata(script_data: dict, script_path: str = "") -> dict:
     """masterpiece_script.json 데이터를 파싱하여 5개 블록 메타데이터 생성."""
     corner_name = script_data.get("corner_name", "역사 딥다이브")
     event_title = script_data.get("event_title", "역사의 순간")
@@ -44,6 +45,9 @@ def build_video_metadata(script_data: dict) -> dict:
     bgm_name = script_data.get("bgm", "ancient_rite.mp3")
     fact_check = script_data.get("fact_check", {})
 
+    # 특수문자(·, 공백, 하이픈 등)를 제거한 유효 해시태그 생성 (예: '전술·전쟁사' -> '전술전쟁사')
+    clean_corner_tag = re.sub(r'[\s·\-\.\/]', '', corner_name)
+
     # 1. 제목 (최대 100자 이내)
     if hook_question:
         title = f"[{corner_name}] {event_title} | {hook_question} #Shorts"
@@ -52,13 +56,57 @@ def build_video_metadata(script_data: dict) -> dict:
     if len(title) > 100:
         title = title[:96] + "... #Shorts"
 
-    # 2. 타임라인 목차 조립
+    # 2. 타임라인 목차 조립 (타임코드 + 소제목 + 1줄 요약)
     timeline_lines = []
+    accum_sec = 0
+    script_dir = os.path.dirname(os.path.abspath(script_path)) if script_path else ""
+
     for sc in scenes:
         s_num = sc.get("scene_number", 1)
-        d_title = sc.get("display_title", "")
-        if d_title:
-            timeline_lines.append(f"• 씬 {s_num}: {d_title}")
+        d_title = sc.get("display_title", "").strip()
+
+        # 1순위: 대본 생성 시 포함된 1줄 핵심 summary
+        summary = sc.get("summary", "").strip()
+        if not summary:
+            # 폴백: image_caption 또는 script 핵심 문장에서 간결하게 추출
+            caption = sc.get("image_caption", "").strip()
+            script_text = sc.get("script", "").strip()
+            sentences = [s.strip() for s in re.split(r'[.!?]', script_text) if len(s.strip()) >= 12]
+            if sentences:
+                summary = sentences[0]
+                if len(summary) > 35:
+                    summary = summary[:32] + "..."
+            elif caption:
+                summary = caption
+
+        m_val = accum_sec // 60
+        s_val = accum_sec % 60
+        timecode = f"{m_val:02d}:{s_val:02d}"
+
+        if summary:
+            if d_title:
+                timeline_lines.append(f"{timecode} 씬 {s_num} | {d_title} : {summary}")
+            else:
+                timeline_lines.append(f"{timecode} 씬 {s_num} : {summary}")
+        else:
+            if d_title:
+                timeline_lines.append(f"{timecode} 씬 {s_num} : {d_title}")
+            else:
+                timeline_lines.append(f"{timecode} 씬 {s_num}")
+
+        # 실제 오디오 길이 확인 (없으면 기본 11초)
+        scene_dur = 11
+        if script_dir:
+            aud_p = os.path.join(script_dir, "audio", f"scene_{s_num}.mp3")
+            if os.path.exists(aud_p):
+                try:
+                    from mutagen.mp3 import MP3
+                    audio = MP3(aud_p)
+                    scene_dur = int(round(audio.info.length))
+                except Exception:
+                    pass
+        accum_sec += max(8, scene_dur)
+
     timeline_text = "\n".join(timeline_lines)
 
     # 3. 팩트체크 사료 목록 조립
@@ -69,11 +117,10 @@ def build_video_metadata(script_data: dict) -> dict:
     else:
         sources_text = "조선왕조실록 및 당대 정사 기록물 대조 완료"
 
-    # 4. 고정 댓글용 질문 추출 (씬 5 마지막 문장 중심)
+    # 4. 질문 추출 (씬 5 마지막 문장 중심)
     question_text = ""
     if scenes:
         last_script = scenes[-1].get("script", "")
-        # 물음표가 포함된 마지막 문장 추출 시도
         sentences = last_script.split(".")
         for s in reversed(sentences):
             if "?" in s:
@@ -86,9 +133,9 @@ def build_video_metadata(script_data: dict) -> dict:
     desc_blocks = [
         f"{hook_question}\n{why_desc}".strip(),
         f"📖 [오늘의 역사 타임라인 & 하이라이트]\n{timeline_text}",
-        f"📜 [100% 팩트체크 사료 출처]\n{sources_text}\n- 고증 검증 상태: 정사 기록 및 사료 교차 검증 완료",
-        f"💬 [생각해볼 질문 (고정 댓글 추천)]\n\"{question_text}\"",
-        f"🎵 [음악 및 크레딧]\n배경음악: {bgm_name} (Royalty Free)\n시각 사료: 위키미디어 커먼즈 & Vertex AI 역사 고증 복원\n\n#역사 #오늘의역사 #쇼츠 #Shorts #다큐멘터리 #{corner_name.replace(' ', '')}"
+        f"📜 [100% 팩트체크 사료 출처]\n{sources_text}",
+        f"💬 [생각해볼 질문]\n\"{question_text}\"",
+        f"🎵 [음악 및 크레딧]\n배경음악: {bgm_name} (Royalty Free)\n시각 사료: 위키미디어 커먼즈 & Vertex AI 역사 고증 복원\n\n#역사 #오늘의역사 #쇼츠 #Shorts #다큐멘터리 #{clean_corner_tag}"
     ]
 
     desc = "\n\n".join(desc_blocks)
@@ -97,7 +144,9 @@ def build_video_metadata(script_data: dict) -> dict:
 
     # 6. 태그 조립 (최대 15개)
     tags = list(DEFAULT_TAGS)
-    tags.append(corner_name.replace(" ", ""))
+    tags.append(clean_corner_tag)
+    if clean_corner_tag != corner_name:
+        tags.append(corner_name)
     if event_title:
         tags.extend([w for w in event_title.split() if len(w) >= 2])
     # 중복 제거
@@ -128,7 +177,7 @@ def upload_masterpiece_video(video_path: str, script_path: str, privacy: str = "
     with open(script_path, "r", encoding="utf-8") as f:
         script_data = json.load(f)
 
-    meta = build_video_metadata(script_data)
+    meta = build_video_metadata(script_data, script_path=script_path)
 
     print("\n==================================================================")
     print(f"🎬 [YouTube 자동 업로드 시작] ({privacy} 모드)")
