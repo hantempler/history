@@ -20,7 +20,8 @@ if os.path.exists(CRED_PATH):
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = CRED_PATH
 
 FONT_PATH = os.path.join(CONFIG_DIR, 'GmarketSansTTFBold.ttf')
-FFMPEG = imageio_ffmpeg.get_ffmpeg_exe()
+_sys_ffmpeg = shutil.which("ffmpeg")
+FFMPEG = _sys_ffmpeg if _sys_ffmpeg else imageio_ffmpeg.get_ffmpeg_exe()
 
 CANVAS_W, CANVAS_H = 1080, 1920
 FPS = 24
@@ -128,7 +129,7 @@ def render_intro_cover_image(bg_path, header_str, highlight_cat, main_title, why
 
     # 1. 상단 날짜 및 헤더 (여유로운 Y=110 상단 안전구역)
     h_bb = draw.textbbox((0, 0), header_str, font=font_header)
-    draw.text(((CANVAS_W - (h_bb[2]-h_bb[0]))/2, 110), header_str, font=font_header, fill=(255, 255, 255, 255), stroke_width=2, stroke_fill='black')
+    draw.text((int((CANVAS_W - (h_bb[2]-h_bb[0])) // 2), 110), header_str, font=font_header, fill=(255, 255, 255, 255), stroke_width=2, stroke_fill='black')
 
     # 2. 요일별 7대 코너 2줄 캡슐 매트릭스 (고대비 분별력 & 25pt 볼드 대형화)
     pill_w = 230
@@ -144,20 +145,20 @@ def render_intro_cover_image(bg_path, header_str, highlight_cat, main_title, why
 
         for c_idx, corner in enumerate(row):
             curr_x = row_start_x + c_idx * (pill_w + pill_gap_x)
-            box = [curr_x, curr_y, curr_x + pill_w, curr_y + pill_h]
+            box = [int(curr_x), int(curr_y), int(curr_x + pill_w), int(curr_y + pill_h)]
             is_match = (corner == highlight_cat) or (highlight_cat in corner) or (corner in highlight_cat)
             if is_match:
                 draw.rounded_rectangle(box, radius=pill_h//2, fill=(255, 212, 0, 255), outline=(255, 255, 255, 220), width=2)
                 t_bb = draw.textbbox((0, 0), corner, font=font_badge)
                 tx = curr_x + (pill_w - (t_bb[2]-t_bb[0]))/2
                 ty = curr_y + (pill_h - (t_bb[3]-t_bb[1]))/2 - 2
-                draw.text((tx, ty), corner, font=font_badge, fill=(10, 14, 20))
+                draw.text((int(tx), int(ty)), corner, font=font_badge, fill=(10, 14, 20))
             else:
                 draw.rounded_rectangle(box, radius=pill_h//2, fill=(10, 14, 24, 230), outline=(255, 255, 255, 120), width=1)
                 t_bb = draw.textbbox((0, 0), corner, font=font_badge)
                 tx = curr_x + (pill_w - (t_bb[2]-t_bb[0]))/2
                 ty = curr_y + (pill_h - (t_bb[3]-t_bb[1]))/2 - 2
-                draw.text((tx, ty), corner, font=font_badge, fill=(255, 255, 255, 255))
+                draw.text((int(tx), int(ty)), corner, font=font_badge, fill=(255, 255, 255, 255))
 
     # 3. 중앙 대형 메인 타이틀 (시원하게 위용을 드러내는 골든 존 배치)
     clean_title = main_title.strip()
@@ -172,7 +173,7 @@ def render_intro_cover_image(bg_path, header_str, highlight_cat, main_title, why
     tw = title_box[2] - title_box[0]
     th = title_box[3] - title_box[1]
     title_y = 570 if len(lines) > 1 else 620
-    draw.multiline_text(((CANVAS_W - tw)/2, title_y), clean_title, font=font_title, fill='#FFD700', align='center', spacing=18, stroke_width=5, stroke_fill='black')
+    draw.multiline_text((int((CANVAS_W - tw) // 2), int(title_y)), clean_title, font=font_title, fill='#FFD700', align='center', spacing=18, stroke_width=5, stroke_fill='black')
 
     return base_img
 
@@ -195,14 +196,13 @@ def draw_body_minimal_header(draw, corner_name, event_date_title):
     pill_x = (CANVAS_W - pill_w) / 2
     pill_y = 115
 
-    draw.rounded_rectangle([pill_x, pill_y, pill_x + pill_w, pill_y + pill_h], radius=pill_h // 2, fill=(*corner_bg, 245))
+    draw.rounded_rectangle([int(pill_x), int(pill_y), int(pill_x + pill_w), int(pill_y + pill_h)], radius=pill_h // 2, fill=(*corner_bg, 245))
     text_col = (18, 22, 32) if (corner_bg[0]*0.299 + corner_bg[1]*0.587 + corner_bg[2]*0.114) > 130 else (255, 255, 255)
     tx = pill_x + (pill_w - cb_w) / 2
     ty = pill_y + (pill_h - cb_h) / 2 - 2
-    draw.text((tx, ty), corner_name, font=font_badge, fill=text_col)
+    draw.text((int(tx), int(ty)), corner_name, font=font_badge, fill=text_col)
 
     # 2. 사건 일자와 사건 제목을 2줄로 스마트 분리
-    # 예: "1947. 10. 22 카슈미르 전쟁..." -> 날짜("1947. 10. 22"), 제목("카슈미르 전쟁...")
     date_match = re.match(r"^(\d{4}[\.\s\-년]+(?:\d{1,2}[\.\s\-월]+)?(?:\d{1,2}[\.\s\-일]*)?\.?)(.*)$", event_date_title.strip())
     if date_match and date_match.group(2).strip():
         date_part = date_match.group(1).strip()
@@ -221,7 +221,7 @@ def draw_body_minimal_header(draw, corner_name, event_date_title):
     if date_part:
         dt_bb = draw.textbbox((0, 0), date_part, font=font_date)
         dt_w = dt_bb[2] - dt_bb[0]
-        draw.text(((CANVAS_W - dt_w) / 2, current_y), date_part, font=font_date, fill=(255, 232, 163), stroke_width=3, stroke_fill='black')
+        draw.text((int((CANVAS_W - dt_w) // 2), int(current_y)), date_part, font=font_date, fill=(255, 232, 163), stroke_width=3, stroke_fill='black')
         current_y += 42
 
     # 제목 렌더링: 820px 이내로 단어 단위 줄바꿈 (2~3행: 38pt 화이트)
@@ -242,7 +242,7 @@ def draw_body_minimal_header(draw, corner_name, event_date_title):
 
     t_box = draw.multiline_textbbox((0, 0), clean_title, font=font_title, spacing=10)
     tw = t_box[2] - t_box[0]
-    draw.multiline_text(((CANVAS_W - tw) / 2, current_y), clean_title, font=font_title, fill=(255, 255, 255, 250), align='center', spacing=10, stroke_width=3.5, stroke_fill='black')
+    draw.multiline_text((int((CANVAS_W - tw) // 2), int(current_y)), clean_title, font=font_title, fill=(255, 255, 255, 250), align='center', spacing=10, stroke_width=3, stroke_fill='black')
 
 # -------------------------------------------------------------
 # 3. 자막 청크 분할 (외톨이 단어 원천 차단)
@@ -410,7 +410,7 @@ def draw_credit_safe_zone(draw, credit_str, caption_str=None, image_type="archiv
         font_credit = ImageFont.truetype(FONT_PATH, 22 if caption_str else 24)
         y = 1675 if caption_str else 1680
         color = (210, 218, 230) if caption_str else (245, 248, 252)
-        draw.text((x, y), credit_str, font=font_credit, fill=color, stroke_width=2.5, stroke_fill='black')
+        draw.text((x, y), credit_str, font=font_credit, fill=color, stroke_width=2, stroke_fill='black')
 
 # -------------------------------------------------------------
 # 6. 아웃트로 3단 피날레 이미지 (3.0s)
@@ -431,7 +431,7 @@ def render_outro_finale_image(bg_path, credit_str, why_title=None, why_desc=None
 
         # 소제목: 세련된 시안 블루 (Y=565)
         wb = draw.textbbox((0, 0), why_title, font=font_why_t)
-        draw.text(((CANVAS_W - (wb[2]-wb[0]))/2, 565), why_title, font=font_why_t, fill='#38BDF8', stroke_width=2.5, stroke_fill='black')
+        draw.text((int((CANVAS_W - (wb[2]-wb[0])) // 2), 565), why_title, font=font_why_t, fill='#38BDF8', stroke_width=2, stroke_fill='black')
 
         # 교훈 본문: 앤틱 샴페인 골드 (#FFE082) + 큰따옴표 “ ... ” (Y=635)
         words = why_desc.strip().replace('\n', ' ').split()
@@ -452,7 +452,7 @@ def render_outro_finale_image(bg_path, credit_str, why_title=None, why_desc=None
 
         db = draw.multiline_textbbox((0, 0), quote_desc, font=font_why_d, spacing=16)
         dw = db[2] - db[0]
-        draw.multiline_text(((CANVAS_W - dw)/2, 635), quote_desc, font=font_why_d, fill='#FFE082', align='center', spacing=16, stroke_width=4, stroke_fill='black')
+        draw.multiline_text((int((CANVAS_W - dw) // 2), 635), quote_desc, font=font_why_d, fill='#FFE082', align='center', spacing=16, stroke_width=4, stroke_fill='black')
 
         # 2. 하단 CTA: 차분한 소프트 쿨 실버 (골드 명언과 완벽 분별) + 네온 골드 버튼
         top_y = 855
@@ -467,15 +467,15 @@ def render_outro_finale_image(bg_path, credit_str, why_title=None, why_desc=None
 
     top_t = "역사 속 진실이 흥미로웠다면"
     tb = draw.textbbox((0, 0), top_t, font=font_sub_top)
-    draw.text(((CANVAS_W - (tb[2]-tb[0]))/2, top_y), top_t, font=font_sub_top, fill=lead_color, stroke_width=3, stroke_fill='black')
+    draw.text((int((CANVAS_W - (tb[2]-tb[0])) // 2), top_y), top_t, font=font_sub_top, fill=lead_color, stroke_width=3, stroke_fill='black')
 
     cta_t = "좋아요 · 구독"
     cb = draw.textbbox((0, 0), cta_t, font=font_cta_main)
-    draw.text(((CANVAS_W - (cb[2]-cb[0]))/2, cta_y), cta_t, font=font_cta_main, fill='#FFD700', stroke_width=6, stroke_fill='black')
+    draw.text((int((CANVAS_W - (cb[2]-cb[0])) // 2), cta_y), cta_t, font=font_cta_main, fill='#FFD700', stroke_width=6, stroke_fill='black')
 
     bot_t = "매일 만나는 1분 역사 다큐멘터리"
     bb = draw.textbbox((0, 0), bot_t, font=font_sub_bottom)
-    draw.text(((CANVAS_W - (bb[2]-bb[0]))/2, bot_y), bot_t, font=font_sub_bottom, fill=(235, 242, 255), stroke_width=3, stroke_fill='black')
+    draw.text((int((CANVAS_W - (bb[2]-bb[0])) // 2), bot_y), bot_t, font=font_sub_bottom, fill=(235, 242, 255), stroke_width=3, stroke_fill='black')
 
     draw_credit_safe_zone(draw, credit_str)
     return base_img
