@@ -2,6 +2,8 @@ import os
 import sys
 import json
 import re
+import shutil
+import subprocess
 from pathlib import Path
 from datetime import datetime
 
@@ -12,6 +14,23 @@ SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
 
 CATEGORY_EDUCATION = "27"
 DEFAULT_TAGS = ["역사", "쇼츠", "역사쇼츠", "Shorts", "다큐멘터리", "오늘의역사"]
+
+
+def get_audio_duration_sec(path: str) -> float:
+    """ffmpeg으로 오디오 길이(초) 측정 (외부 라이브러리 의존성 없음)"""
+    if not os.path.exists(path):
+        return 11.0
+    try:
+        ffmpeg_exe = shutil.which("ffmpeg") or "ffmpeg"
+        cmd = [ffmpeg_exe, "-i", path]
+        res = subprocess.run(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, text=True, encoding="utf-8", errors="ignore")
+        m = re.search(r"Duration:\s*(\d+):(\d+):(\d+\.\d+)", res.stderr)
+        if m:
+            h, m_val, s = m.groups()
+            return int(h)*3600 + int(m_val)*60 + float(s)
+    except Exception:
+        pass
+    return 11.0
 
 
 def build_service():
@@ -99,12 +118,7 @@ def build_video_metadata(script_data: dict, script_path: str = "") -> dict:
         if script_dir:
             aud_p = os.path.join(script_dir, "audio", f"scene_{s_num}.mp3")
             if os.path.exists(aud_p):
-                try:
-                    from mutagen.mp3 import MP3
-                    audio = MP3(aud_p)
-                    scene_dur = int(round(audio.info.length))
-                except Exception:
-                    pass
+                scene_dur = int(round(get_audio_duration_sec(aud_p)))
         accum_sec += max(8, scene_dur)
 
     timeline_text = "\n".join(timeline_lines)
