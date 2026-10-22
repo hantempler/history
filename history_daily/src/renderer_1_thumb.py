@@ -292,7 +292,7 @@ def make_bg_clip(img_path, source_text, title_text, font_path, temp_dir, part_na
         target_ratio = 1080 / 1070
         clip_ratio = clip.w / clip.h
         
-        if clip.aspect_ratio > 1080/850:
+        if clip_ratio > 1080/850:
             clip = clip.resize(height=850)
         else:
             clip = clip.resize(width=1080)
@@ -340,7 +340,7 @@ def make_bg_clip(img_path, source_text, title_text, font_path, temp_dir, part_na
     final_bg_clip = CompositeVideoClip(layers, size=(1080, 1920))
     return final_bg_clip
 
-def run_renderer_thumb(target_date=None, edition='morning'):
+def run_renderer_thumb(target_date=None, edition='history'):
     daily_dir = get_daily_dir(target_date, edition)
     script_path = os.path.join(daily_dir, "3_script.json")
     articles_path = os.path.join(daily_dir, "2_selected_articles.json")

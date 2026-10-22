@@ -8,7 +8,7 @@ from datetime import datetime
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.config import get_daily_dir
 
-def scrape_wiki_onthisday(target_date=None, edition='morning'):
+def scrape_wiki_onthisday(target_date=None, edition='history'):
     if not target_date:
         target_date = datetime.now().strftime("%Y%m%d")
         

@@ -9,7 +9,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.config import GCP_PROJECT_ID, GCP_LOCATION, get_daily_dir
 
-def run_script_gen(target_date=None, edition='morning'):
+def run_script_gen(target_date=None, edition='history'):
     client = genai.Client(vertexai=True, project=GCP_PROJECT_ID, location=GCP_LOCATION)
     
     daily_dir = get_daily_dir(target_date, edition)

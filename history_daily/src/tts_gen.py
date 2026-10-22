@@ -10,7 +10,7 @@ if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 from src.config import get_daily_dir, EDITION_CONFIG
 
-def run_tts_gen(target_date, edition='morning'):
+def run_tts_gen(target_date, edition='history'):
     daily_dir = get_daily_dir(target_date, edition)
     script_path = os.path.join(daily_dir, "3_script.json")
     

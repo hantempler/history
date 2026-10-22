@@ -70,7 +70,7 @@ def create_pil_subtitle_clip(text, font_path, fontsize, temp_dir):
     clip = ImageClip(temp_path)
     return clip
 
-def run_renderer_video(target_date=None, edition='morning'):
+def run_renderer_video(target_date=None, edition='history'):
     if target_date is None:
         target_date = datetime.now().strftime("%Y%m%d")
     daily_dir = get_daily_dir(target_date, edition)

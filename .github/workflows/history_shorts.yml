@@ -1,7 +1,22 @@
 name: History Shorts Pipeline
 on:
-  # 수동 실행을 위한 워크플로우 디스패치
+  # 수동 실행을 위한 워크플로우 디스패치 (파이프라인 선택 및 날짜 지정 가능)
   workflow_dispatch:
+    inputs:
+      pipeline:
+        description: '실행할 파이프라인 선택'
+        required: true
+        default: 'all (둘 다 순차 실행)'
+        type: choice
+        options:
+          - 'all (둘 다 순차 실행)'
+          - 'daily (1분 타임머신만 실행)'
+          - 'deepdive (마스터피스 심층만 실행)'
+      target_date:
+        description: '실행 대상 날짜 (비워두면 오늘 날짜. 예: 2026-10-21)'
+        required: false
+        default: ''
+        type: string
 
   # Cloudflare Workers 등 외부 API 호출을 위한 디스패치
   repository_dispatch:
@@ -63,8 +78,10 @@ jobs:
 
       # -----------------------------------------------------------------------
       # [1단계] history_daily 파이프라인 실행 (역사 속 오늘 / 1분 타임머신)
+      # (선택값이 'all' 이거나 'daily' 일 때만 가동)
       # -----------------------------------------------------------------------
       - name: Run Pipeline (History Daily Shorts) with retry
+        if: ${{ github.event_name != 'workflow_dispatch' || contains(inputs.pipeline, 'all') || contains(inputs.pipeline, 'daily') }}
         uses: nick-fields/retry@v3
         with:
           max_attempts: 3
@@ -72,12 +89,21 @@ jobs:
           timeout_minutes: 50
           command: |
             echo "Executing headless pipeline for history daily shorts"
-            python history_daily/auto_run.py
+            TARGET_DATE="${{ inputs.target_date }}"
+            if [ -n "$TARGET_DATE" ]; then
+              CLEAN_DATE=$(echo "$TARGET_DATE" | tr -d '-')
+              echo "Using target date: $CLEAN_DATE"
+              python history_daily/auto_run.py --date "$CLEAN_DATE"
+            else
+              python history_daily/auto_run.py
+            fi
 
       # -----------------------------------------------------------------------
       # [2단계] history_deepdive 마스터피스 순차 실행 & 유튜브 업로드
+      # (선택값이 'all' 이거나 'deepdive' 일 때만 가동)
       # -----------------------------------------------------------------------
       - name: Run Pipeline (History Deepdive Masterpiece & Auto Upload) with retry
+        if: ${{ github.event_name != 'workflow_dispatch' || contains(inputs.pipeline, 'all') || contains(inputs.pipeline, 'deepdive') }}
         uses: nick-fields/retry@v3
         with:
           max_attempts: 3
@@ -85,4 +111,10 @@ jobs:
           timeout_minutes: 50
           command: |
             echo "Executing History Deepdive Masterpiece Pipeline with Auto Upload"
-            python history_deepdive/auto_run_masterpiece.py --upload
+            TARGET_DATE="${{ inputs.target_date }}"
+            if [ -n "$TARGET_DATE" ]; then
+              echo "Using target date: $TARGET_DATE"
+              python history_deepdive/auto_run_masterpiece.py --upload --date "$TARGET_DATE"
+            else
+              python history_deepdive/auto_run_masterpiece.py --upload
+            fi
