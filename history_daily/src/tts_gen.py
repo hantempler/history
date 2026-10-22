@@ -5,8 +5,10 @@ from google.cloud import texttospeech
 import inquirer
 
 # Add src to Python path if run standalone
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from config import get_daily_dir, EDITION_CONFIG
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+from src.config import get_daily_dir, EDITION_CONFIG
 
 def run_tts_gen(target_date, edition='morning'):
     daily_dir = get_daily_dir(target_date, edition)
@@ -70,7 +72,7 @@ def run_tts_gen(target_date, edition='morning'):
             print(f"  -> Audio for {key} saved to {output_path}")
 
 if __name__ == "__main__":
-    from config import DATA_DIR
+    from src.config import DATA_DIR
     available_folders = []
     if os.path.exists(DATA_DIR):
         available_folders = [d for d in os.listdir(DATA_DIR) if os.path.isdir(os.path.join(DATA_DIR, d))]

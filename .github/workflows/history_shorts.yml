@@ -40,41 +40,42 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f history_daily/requirements.txt ]; then pip install -r history_daily/requirements.txt; fi
           if [ -f history_deepdive/requirements.txt ]; then pip install -r history_deepdive/requirements.txt; fi
 
       - name: Setup Google Cloud Credentials
         env:
           GCP_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS_JSON }}
         run: |
-          mkdir -p config
+          mkdir -p history_daily/config
           mkdir -p history_deepdive/config
-          echo "$GCP_CREDENTIALS" > config/application_default_credentials.json
+          echo "$GCP_CREDENTIALS" > history_daily/config/application_default_credentials.json
           echo "$GCP_CREDENTIALS" > history_deepdive/config/application_default_credentials.json
 
       - name: Setup YouTube Token
         env:
           YOUTUBE_TOKEN: ${{ secrets.YOUTUBE_TOKEN_JSON }}
         run: |
-          mkdir -p config
+          mkdir -p history_daily/config
           mkdir -p history_deepdive/config
-          echo "$YOUTUBE_TOKEN" > config/youtube_token.json
+          echo "$YOUTUBE_TOKEN" > history_daily/config/youtube_token.json
           echo "$YOUTUBE_TOKEN" > history_deepdive/config/youtube_token.json
 
       # -----------------------------------------------------------------------
-      # [1단계] 기존 파이프라인 우선 실행 (기존 동작 100% 보장)
+      # [1단계] history_daily 파이프라인 실행 (역사 속 오늘 / 1분 타임머신)
       # -----------------------------------------------------------------------
-      - name: Run Pipeline (Existing history shorts) with retry
+      - name: Run Pipeline (History Daily Shorts) with retry
         uses: nick-fields/retry@v3
         with:
           max_attempts: 3
           retry_wait_seconds: 60
           timeout_minutes: 50
           command: |
-            echo "Executing headless pipeline for history shorts"
-            python src/auto_run.py
+            echo "Executing headless pipeline for history daily shorts"
+            python history_daily/auto_run.py
 
       # -----------------------------------------------------------------------
-      # [2단계] 기존 파이프라인 완료 후 -> history_deepdive 마스터피스 순차 실행 & 유튜브 업로드
+      # [2단계] history_deepdive 마스터피스 순차 실행 & 유튜브 업로드
       # -----------------------------------------------------------------------
       - name: Run Pipeline (History Deepdive Masterpiece & Auto Upload) with retry
         uses: nick-fields/retry@v3

@@ -7,8 +7,8 @@ from datetime import datetime, timezone, timedelta
 # GitHub Actions 서버는 UTC 기준. 한국 시간(KST = UTC+9)으로 날짜/요일 판단
 KST = timezone(timedelta(hours=9))
 
-# Add src to Python path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, BASE_DIR)
 
 from src.wiki_scraper import scrape_wiki_onthisday
 from src.script_gen import run_script_gen
@@ -87,8 +87,11 @@ def _get_video_path(target_date, edition):
 
 def upload_video_to_youtube(target_date, edition):
     """YouTube에 영상 업로드 (OAuth 토큰 방식)"""
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     token_path = os.path.join(BASE_DIR, "config", "youtube_token.json")
+    if not os.path.exists(token_path):
+        root_token = os.path.join(os.path.dirname(BASE_DIR), "config", "youtube_token.json")
+        if os.path.exists(root_token):
+            token_path = root_token
     if not os.path.exists(token_path):
         print(f"[YouTube] 토큰 파일 없음 ({token_path}). 업로드 건너뜀.")
         return

@@ -8,14 +8,7 @@ env/
 .env
 
 # Secrets & Credentials
-config/application_default_credentials.json
-config/.env
-config/kakao_js_key.txt
-config/client_secrets.json
-config/gdrive_token.json
-config/youtube_token.json
 client_secret*.json
-config/git_hub_code
 history_deepdive/config/application_default_credentials.json
 history_deepdive/config/youtube_token.json
 history_deepdive/config/.env
@@ -23,13 +16,17 @@ history_deepdive/config/kakao_js_key.txt
 history_deepdive/config/client_secrets.json
 history_deepdive/config/gdrive_token.json
 history_deepdive/config/git_hub_code
-
+history_daily/config/application_default_credentials.json
+history_daily/config/youtube_token.json
+history_daily/config/.env
+history_daily/config/kakao_js_key.txt
+history_daily/config/client_secrets.json
+history_daily/config/gdrive_token.json
+history_daily/config/git_hub_code
 
 # Data & Heavy Media Files
-data/
-data_v2/
-data_v3/
 history_deepdive/data/
+history_daily/data/
 *.mp4
 *.mp3
 *.db
@@ -43,11 +40,10 @@ logs/
 .DS_Store
 
 # Assets & BGM exceptions
-!assets/
-!assets/*
-!assets/**
 !history_deepdive/assets/
 !history_deepdive/assets/*
 !history_deepdive/assets/**
 !history_deepdive/assets/bgm/*.mp3
-!assets/bgm/*.mp3
+!history_daily/assets/
+!history_daily/assets/*
+!history_daily/assets/**

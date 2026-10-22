@@ -8,8 +8,10 @@ from moviepy.editor import *
 from PIL import Image, ImageDraw, ImageFont
 import numpy as np
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from config import get_daily_dir, CONFIG_DIR, EDITION_CONFIG
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+from src.config import get_daily_dir, CONFIG_DIR, EDITION_CONFIG
 
 def split_title_smart(title_text):
     words = title_text.split()
@@ -429,7 +431,7 @@ def run_renderer_thumb(target_date=None, edition='morning'):
     print("All thumbnails generated successfully.")
 
 if __name__ == "__main__":
-    from config import DATA_DIR
+    from src.config import DATA_DIR
     available_folders = []
     if os.path.exists(DATA_DIR):
         available_folders = [d for d in os.listdir(DATA_DIR) if os.path.isdir(os.path.join(DATA_DIR, d))]

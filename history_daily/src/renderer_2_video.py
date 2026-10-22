@@ -7,8 +7,10 @@ import inquirer
 from moviepy.editor import *
 from PIL import Image, ImageDraw, ImageFont
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from config import get_daily_dir, CONFIG_DIR, EDITION_CONFIG
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+from src.config import get_daily_dir, CONFIG_DIR, EDITION_CONFIG
 
 def chunk_text(text, max_length=15):
     lines = text.replace('\n', ' ').split()
@@ -156,7 +158,7 @@ def run_renderer_video(target_date=None, edition='morning'):
     return output_path
 
 if __name__ == "__main__":
-    from config import DATA_DIR
+    from src.config import DATA_DIR
     available_folders = []
     if os.path.exists(DATA_DIR):
         available_folders = [d for d in os.listdir(DATA_DIR) if os.path.isdir(os.path.join(DATA_DIR, d))]
