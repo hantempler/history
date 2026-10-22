@@ -19,6 +19,11 @@ config/git_hub_code
 history_deepdive/config/application_default_credentials.json
 history_deepdive/config/youtube_token.json
 history_deepdive/config/.env
+history_deepdive/config/kakao_js_key.txt
+history_deepdive/config/client_secrets.json
+history_deepdive/config/gdrive_token.json
+history_deepdive/config/git_hub_code
+
 
 # Data & Heavy Media Files
 data/

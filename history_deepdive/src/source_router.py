@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import json
 import sqlite3
 import urllib.request
@@ -14,7 +15,62 @@ if hasattr(sys.stderr, "reconfigure"):
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WORKSPACE_DIR = os.path.dirname(BASE_DIR)
-SILLOK_DB_PATH = os.path.join(WORKSPACE_DIR, "history_josun", "data", "sillok.db")
+SILLOK_DB_LOCAL_PATH = os.path.join(WORKSPACE_DIR, "history_josun", "data", "sillok.db")
+SILLOK_DB_CACHE_PATH = os.path.join(BASE_DIR, "data", "sillok.db")
+SILLOK_RELEASE_URL = "https://github.com/hantempler/history/releases/download/data-v1/sillok.db"
+
+
+def ensure_sillok_db(max_retries: int = 3, retry_delay: int = 10) -> str:
+    """로컬에 실록 DB가 없으면 GitHub Release에서 자동 다운로드 (실패 시 대기 후 재시도)"""
+    if os.path.exists(SILLOK_DB_LOCAL_PATH):
+        return SILLOK_DB_LOCAL_PATH
+    if os.path.exists(SILLOK_DB_CACHE_PATH) and os.path.getsize(SILLOK_DB_CACHE_PATH) > 1024 * 1024:
+        return SILLOK_DB_CACHE_PATH
+
+    os.makedirs(os.path.dirname(SILLOK_DB_CACHE_PATH), exist_ok=True)
+    print(f"  📥 [GitHub Release] 클라우드 환경 감지: 실록 DB 다운로드 준비...")
+    print(f"  🔗 URL: {SILLOK_RELEASE_URL}")
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            print(f"  🚀 [시도 {attempt}/{max_retries}] 실록 DB 다운로드 시작...")
+            req = urllib.request.Request(SILLOK_RELEASE_URL, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=120) as response, open(SILLOK_DB_CACHE_PATH, "wb") as out_file:
+                total_size = int(response.info().get("Content-Length", 0))
+                downloaded = 0
+                block_size = 1024 * 1024  # 1MB
+                while True:
+                    buffer = response.read(block_size)
+                    if not buffer:
+                        break
+                    downloaded += len(buffer)
+                    out_file.write(buffer)
+                    if total_size > 0:
+                        percent = downloaded * 100 / total_size
+                        print(f"\r  ⏳ 다운로드 중: {downloaded / (1024*1024):.1f}MB / {total_size / (1024*1024):.1f}MB ({percent:.1f}%)", end="", flush=True)
+
+            # 다운로드 완료 검증 (최소 100MB 이상이어야 정상)
+            if os.path.exists(SILLOK_DB_CACHE_PATH) and os.path.getsize(SILLOK_DB_CACHE_PATH) > 100 * 1024 * 1024:
+                print("\n  ✅ 실록 DB 다운로드 및 무결성 검증 완료!")
+                return SILLOK_DB_CACHE_PATH
+            else:
+                raise IOError("다운로드된 파일 크기가 비정상적으로 작습니다 (불완전 다운로드).")
+
+        except Exception as e:
+            print(f"\n  ⚠️ [시도 {attempt} 실패] 실록 DB 다운로드 오류: {e}")
+            if os.path.exists(SILLOK_DB_CACHE_PATH):
+                try:
+                    os.remove(SILLOK_DB_CACHE_PATH)
+                except Exception:
+                    pass
+
+            if attempt < max_retries:
+                print(f"  ⏳ 네트워크 안전 확보를 위해 {retry_delay}초 동안 대기 후 재시도합니다...")
+                time.sleep(retry_delay)
+            else:
+                print(f"  ❌ 총 {max_retries}회 재시도 모두 실패. 다운로드를 중단합니다.")
+
+    return None
 
 # ---------------------------------------------------------------------------
 # 1. 요일별 마스터 프리셋 매트릭스 (0: 월 ~ 6: 일)
@@ -104,14 +160,15 @@ WEEKDAY_PRESETS: Dict[int, Dict[str, Any]] = {
 # 2. 조선왕조실록 DB 수집기 (수요일 / 일요일 직결)
 # ---------------------------------------------------------------------------
 def collect_sillok_events(month_str: str, day_str: str, limit: int = 25) -> List[Dict[str, Any]]:
-    if not os.path.exists(SILLOK_DB_PATH):
-        raise FileNotFoundError(f"실록 DB 파일을 찾을 수 없습니다: {SILLOK_DB_PATH}")
+    db_path = ensure_sillok_db()
+    if not db_path or not os.path.exists(db_path):
+        raise FileNotFoundError(f"[사료 무결성 오류] 조선왕조실록 DB를 확보할 수 없습니다. (경로: {db_path})")
 
     month = f"{int(month_str):02d}"
     day = f"{int(day_str):02d}"
     date_pattern = f"%-{month}-{day}"
 
-    conn = sqlite3.connect(SILLOK_DB_PATH)
+    conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
