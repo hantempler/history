@@ -11,7 +11,7 @@ import numpy as np
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
-from src.config import get_daily_dir, CONFIG_DIR, EDITION_CONFIG
+from src.config import get_daily_dir, CONFIG_DIR, EDITION_CONFIG, ASSETS_DIR
 
 def split_title_smart(title_text):
     words = title_text.split()
@@ -268,7 +268,6 @@ def create_pil_text_clip(text, font_path, fontsize, temp_dir, text_type="title",
     return clip
 
 def make_bg_clip(img_path, source_text, title_text, font_path, temp_dir, part_name=None, center_text=None, date_str="", top_title="", bg_image_name="vintage_bg.jpg"):
-    from config import ASSETS_DIR
     vintage_bg_path = os.path.join(ASSETS_DIR, bg_image_name)
     
     if os.path.exists(vintage_bg_path):
