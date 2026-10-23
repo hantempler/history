@@ -23,10 +23,17 @@ history_daily/config/kakao_js_key.txt
 history_daily/config/client_secrets.json
 history_daily/config/gdrive_token.json
 history_daily/config/git_hub_code
+test_history/config/application_default_credentials.json
+test_history/config/youtube_token.json
+test_history/config/.env
+test_history/config/client_secrets.json
+test_history/config/gdrive_token.json
 
 # Data & Heavy Media Files
 history_deepdive/data/
 history_daily/data/
+test_history/data/
+history_daily/_backup_legacy/
 *.mp4
 *.mp3
 *.db
@@ -47,3 +54,8 @@ logs/
 !history_daily/assets/
 !history_daily/assets/*
 !history_daily/assets/**
+!history_daily/assets/bgm/*.mp3
+!test_history/assets/
+!test_history/assets/*
+!test_history/assets/**
+!test_history/assets/bgm/*.mp3
