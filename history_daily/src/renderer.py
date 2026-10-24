@@ -522,29 +522,24 @@ def split_to_two_lines(text: str):
 
 
 # -------------------------------------------------------------
-# [아웃트로 피날레] 세련된 시청자 인터랙션 투표 카드 (A vs B)
+# -------------------------------------------------------------
+# [아웃트로 피날레] 시네마틱 중앙 철학적 질문 (여운을 남기는 다큐 에필로그)
 # -------------------------------------------------------------
 def render_outro_finale_image(bg_path, credit_str, outro_debate=None, date_title_str=None, lang="ko"):
     base_img = load_and_fill_fullscreen(bg_path)
     base_img = base_img.filter(ImageFilter.GaussianBlur(radius=8))
-    base_img = ImageEnhance.Brightness(base_img).enhance(0.40)
-    scrim = Image.new("RGBA", (CANVAS_W, CANVAS_H), (0, 0, 0, 155))
+    base_img = ImageEnhance.Brightness(base_img).enhance(0.38)
+    scrim = Image.new("RGBA", (CANVAS_W, CANVAS_H), (0, 0, 0, 160))
     base_img = Image.alpha_composite(base_img, scrim)
     draw = ImageDraw.Draw(base_img)
 
     f_top = get_font(32)
     f_q_main = get_font(46)
     f_q_sub = get_font(30)
-    f_cta_main = get_font(32)
-    f_cta_sub = get_font(26)
 
-    # 1. 상단 타이틀 (알약/박스 없음!)
+    # 1. 텍스트 추출 및 정제
     top_txt = "QUESTIONS HISTORY LEFT BEHIND" if lang == "en" else "역사가 남긴 질문"
-    tb = draw.textbbox((0, 0), top_txt, font=f_top)
-    draw.text(((CANVAS_W - (tb[2] - tb[0])) // 2, 380), top_txt, font=f_top, fill=(255, 215, 0), stroke_width=3, stroke_fill="black")
-    draw.line([(420, 435), (660, 435)], fill=(229, 169, 60, 220), width=2)
 
-    # 2. 중심 철학적 질문 (여운을 주는 다큐 에필로그)
     if lang == "en":
         target_title = outro_debate.get("target_entity", "This historical event") if outro_debate else "This historical event"
         target_title = sanitize_tofu(target_title)
@@ -553,24 +548,32 @@ def render_outro_finale_image(bg_path, credit_str, outro_debate=None, date_title
         q1 = f'"{qa1},' if not qa1.startswith('"') else qa1
         q2 = f'{qa2}"' if not qa2.endswith('"') else qa2
         ev_txt = f"{target_title} asks us today"
-        c1 = "Share your thoughts in the comments"
-        c2 = "Subscribe to explore tomorrow's history first"
     else:
-        target_title = outro_debate.get("target_entity", "1648년 베스트팔렌 조약") if outro_debate else "1648년 베스트팔렌 조약"
+        target_title = outro_debate.get("target_entity", "역사의 순간") if outro_debate else "역사의 순간"
         target_title = sanitize_tofu(target_title)
-        q1 = '"수백만의 피로 맺은 평화,'
-        q2 = '과연 진정한 공존이란 무엇일까요?"'
-        if outro_debate and "question_a_2" in outro_debate:
+        if outro_debate and "question_a_1" in outro_debate and "question_a_2" in outro_debate:
+            qa1 = sanitize_tofu(outro_debate.get("question_a_1", ""))
+            qa2 = sanitize_tofu(outro_debate.get("question_a_2", ""))
+            q1 = f'"{qa1},' if not qa1.startswith('"') else qa1
+            if qa2.endswith('"'):
+                q2 = qa2
+            elif qa2.endswith('?'):
+                q2 = f'{qa2}"'
+            elif any(qa2.endswith(end) for end in ['인가', '일까', '을까', '한가', '건가', '는가', '나요', '가요', '까요']):
+                q2 = f'{qa2}?"'
+            else:
+                q2 = f'{qa2}이었을까요?"'
+        elif outro_debate and "question_a_2" in outro_debate:
             q_cand = sanitize_tofu(outro_debate.get("question_a_2", ""))
-            if q_cand and len(q_cand) > 5:
-                q1 = f'"{q_cand},'
-                q2 = '역사는 우리에게 어떤 답을 남겼을까요?"'
+            q1 = f'"{q_cand},'
+            q2 = '역사는 우리에게 어떤 답을 남겼을까요?"'
+        else:
+            q1 = '"수백만의 피로 맺은 평화,'
+            q2 = '과연 진정한 공존이란 무엇일까요?"'
         ev_txt = f"{target_title}이 오늘날 우리에게 묻습니다"
-        c1 = "댓글로 여러분의 생각을 들려주세요"
-        c2 = "구독하고 내일의 역사도 가장 먼저 만나보세요"
 
-    # 텍스트 줄바꿈 (화면 너비 860px 제한)
-    def wrap_text_lines(text_to_wrap, font, max_w=860):
+    # 텍스트 줄바꿈 (화면 너비 880px 제한)
+    def wrap_text_lines(text_to_wrap, font, max_w=880):
         words = text_to_wrap.strip().split()
         res_lines, cur_l = [], []
         for w in words:
@@ -588,34 +591,53 @@ def render_outro_finale_image(bg_path, credit_str, outro_debate=None, date_title
     wrapped_lines = []
     for q_part in [q1, q2]:
         if q_part:
-            wrapped_lines.extend(wrap_text_lines(q_part, f_q_main, max_w=860))
+            wrapped_lines.extend(wrap_text_lines(q_part, f_q_main, max_w=880))
 
     cur_f_q = f_q_main
+    step_q_y = 70
     if len(wrapped_lines) > 2:
         cur_f_q = get_font(38)
+        step_q_y = 60
         wrapped_lines = []
         for q_part in [q1, q2]:
             if q_part:
-                wrapped_lines.extend(wrap_text_lines(q_part, cur_f_q, max_w=860))
+                wrapped_lines.extend(wrap_text_lines(q_part, cur_f_q, max_w=880))
 
-    start_q_y = 520 if len(wrapped_lines) <= 2 else 480
-    step_q_y = 68 if len(wrapped_lines) <= 2 else 58
+    # 2. 전체 블록 높이 계산 및 완벽한 수직 중앙 배치 (중앙 Y = 930)
+    tb = draw.textbbox((0, 0), top_txt, font=f_top)
+    top_h = tb[3] - tb[1]
+
+    eb = draw.textbbox((0, 0), ev_txt, font=f_q_sub)
+    ev_h = eb[3] - eb[1]
+
+    gap_top_to_line = 18
+    gap_line_to_q = 60
+    q_total_h = len(wrapped_lines[:4]) * step_q_y
+    gap_q_to_ev = 45
+
+    total_block_h = top_h + gap_top_to_line + gap_line_to_q + q_total_h + gap_q_to_ev + ev_h
+
+    # 9:16 모바일 쇼츠 시각적 황금 중앙 좌표 (약 930px)
+    center_y = 930
+    start_y = center_y - (total_block_h // 2)
+
+    # 3. 렌더링: 상단 타이틀
+    top_y = start_y
+    draw.text(((CANVAS_W - (tb[2] - tb[0])) // 2, top_y), top_txt, font=f_top, fill=(255, 215, 0), stroke_width=3, stroke_fill="black")
+
+    line_w = 120 if lang == "en" else 90
+    line_y = top_y + top_h + gap_top_to_line
+    draw.line([(CANVAS_W // 2 - line_w, line_y), (CANVAS_W // 2 + line_w, line_y)], fill=(229, 169, 60, 220), width=2)
+
+    # 4. 렌더링: 중심 철학적 질문 (여운을 주는 다큐 에필로그 쿼트)
+    start_q_y = line_y + gap_line_to_q
     for idx_l, l_txt in enumerate(wrapped_lines[:4]):
         qb = draw.textbbox((0, 0), l_txt, font=cur_f_q)
         draw.text(((CANVAS_W - (qb[2] - qb[0])) // 2, start_q_y + idx_l * step_q_y), l_txt, font=cur_f_q, fill=(255, 255, 255), stroke_width=4, stroke_fill="black")
 
-    ev_y = start_q_y + len(wrapped_lines[:4]) * step_q_y + 35
-    eb = draw.textbbox((0, 0), ev_txt, font=f_q_sub)
+    # 5. 렌더링: 역사적 사건 귀속 및 화두 제시
+    ev_y = start_q_y + q_total_h + gap_q_to_ev - 15
     draw.text(((CANVAS_W - (eb[2] - eb[0])) // 2, ev_y), ev_txt, font=f_q_sub, fill=(225, 235, 245), stroke_width=2, stroke_fill="black")
-
-    # 3. 하단 CTA (유튜브 쇼츠 UI에 가려지지 않는 안전 영역 y=1200)
-    cb1 = draw.textbbox((0, 0), c1, font=f_cta_main)
-    cb2 = draw.textbbox((0, 0), c2, font=f_cta_sub)
-    c_w = max(cb1[2] - cb1[0], cb2[2] - cb2[0]) + 70
-    c_x, c_y = (CANVAS_W - c_w) // 2, 1200
-    draw.rectangle([c_x, c_y, c_x + c_w, c_y + 120], fill=(10, 14, 22, 210), outline=(229, 169, 60), width=1)
-    draw.text(((CANVAS_W - (cb1[2] - cb1[0])) // 2, c_y + 24), c1, font=f_cta_main, fill=(255, 215, 0), stroke_width=3, stroke_fill="black")
-    draw.text(((CANVAS_W - (cb2[2] - cb2[0])) // 2, c_y + 70), c2, font=f_cta_sub, fill=(225, 235, 245), stroke_width=2, stroke_fill="black")
 
     return base_img
 
