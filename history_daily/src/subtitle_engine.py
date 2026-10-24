@@ -59,8 +59,31 @@ def get_audio_voice_activity(audio_path, ffmpeg_bin="ffmpeg", min_silence_dur=0.
 # ---------------------------------------------------------------------------
 # 2. 규칙 기반 호흡 단위 청킹 (Fallback)
 # ---------------------------------------------------------------------------
-def rule_based_chunking(text):
-    """한국어 구문 및 문장부호 기준 자연스러운 호흡 단위(12~22자) 분할 알고리즘."""
+def rule_based_chunking(text, lang="ko"):
+    """한국어/영어 구문 및 문장부호 기준 자연스러운 호흡 단위 분할 알고리즘."""
+    if lang == "en":
+        words = text.strip().split()
+        chunks = []
+        cur_words = []
+        for w in words:
+            cur_words.append(w)
+            if len(cur_words) >= 5 or w.endswith((".", ",", "!", "?", ";", ":")):
+                chunks.append(" ".join(cur_words))
+                cur_words = []
+        if cur_words:
+            chunks.append(" ".join(cur_words))
+
+        results = []
+        for c in chunks:
+            clean_words = [w.strip(".,?!'\"[]():;") for w in c.split() if len(w.strip(".,?!'\"[]():;")) >= 4]
+            longest = max(clean_words, key=len) if clean_words else ""
+            results.append({
+                "text": c.strip(),
+                "highlight": longest
+            })
+        return results
+
+    # 한국어 기본 청킹
     raw_parts = re.split(r'([,?!.]\s*)', text)
     tokens = []
     for i in range(0, len(raw_parts), 2):
@@ -95,7 +118,7 @@ def rule_based_chunking(text):
 # ---------------------------------------------------------------------------
 # 3. Gemini 2.5 Flash 기반 지능형 다이내믹 청킹 & 키워드 하이라이트
 # ---------------------------------------------------------------------------
-def analyze_dynamic_chunks(scenes, gcp_project_id=GCP_PROJECT_ID, gcp_location=GCP_LOCATION):
+def analyze_dynamic_chunks(scenes, lang="ko", gcp_project_id=GCP_PROJECT_ID, gcp_location=GCP_LOCATION):
     """Gemini 2.5 Flash를 이용해 역사 쇼츠 최적화 호흡 단위 청크 및 킬러 키워드 하이라이트 추출."""
     try:
         from google import genai
@@ -112,15 +135,48 @@ def analyze_dynamic_chunks(scenes, gcp_project_id=GCP_PROJECT_ID, gcp_location=G
                 "script": sc.get("script", "")
             })
 
-        system_instruction = (
-            "당신은 구독자 100만 유튜브 역사 지식 쇼츠의 수석 자막 디렉터입니다.\n"
-            "각 씬의 내레이션을 성우의 자연스러운 발화 호흡에 맞추어 2.0~3.5초(약 12~22자 내외)의 '의미 있는 구문 덩어리'로 분할하세요.\n"
-            "절대 3~4글자 단위로 자잘하게 쪼개지 말고, 시청자가 한눈에 읽기 편안한 한 줄 문맥 단위여야 합니다.\n"
-            "각 청크마다 시청자의 시선을 순간적으로 사로잡을 수 있는 '핵심 키워드'(역사적 사건/인물/연도/결정적 행동) 1개를 highlight 필드에 지정하세요.\n"
-            "텍스트의 원본 글자나 의미를 절대 누락하거나 임의로 변형하지 마세요."
-        )
+        if lang == "en":
+            system_instruction = (
+                "You are the senior subtitle director for a 1M subscriber global history documentary YouTube channel.\n"
+                "Split each scene's English narration into natural speech breathing chunks of 4 to 7 words (about 20-35 characters).\n"
+                "Do NOT split into tiny 1-2 word fragments; maintain clear, easy-to-read single-line context.\n"
+                "In each chunk, select exactly 1 gripping key historical keyword or phrase (event, person, year, decisive action) for the highlight field.\n"
+                "Do NOT alter or omit any original words."
+            )
+            prompt = f"""
+Split the following English history documentary narrations into natural speech subtitle chunks.
 
-        prompt = f"""
+[Input Scenes]
+{json.dumps(scenes_input, ensure_ascii=False, indent=2)}
+
+[Output JSON Format - JSON ONLY]
+{{
+  "scenes": [
+    {{
+      "scene_number": 1,
+      "chunks": [
+        {{
+          "text": "In the cold October of 1917,",
+          "highlight": "October of 1917"
+        }},
+        {{
+          "text": "the Russian Empire stood on the brink of collapse.",
+          "highlight": "Russian Empire"
+        }}
+      ]
+    }}
+  ]
+}}
+"""
+        else:
+            system_instruction = (
+                "당신은 구독자 100만 유튜브 역사 지식 쇼츠의 수석 자막 디렉터입니다.\n"
+                "각 씬의 내레이션을 성우의 자연스러운 발화 호흡에 맞추어 2.0~3.5초(약 12~22자 내외)의 '의미 있는 구문 덩어리'로 분할하세요.\n"
+                "절대 3~4글자 단위로 자잘하게 쪼개지 말고, 시청자가 한눈에 읽기 편안한 한 줄 문맥 단위여야 합니다.\n"
+                "각 청크마다 시청자의 시선을 순간적으로 사로잡을 수 있는 '핵심 키워드'(역사적 사건/인물/연도/결정적 행동) 1개를 highlight 필드에 지정하세요.\n"
+                "텍스트의 원본 글자나 의미를 절대 누락하거나 임의로 변형하지 마세요."
+            )
+            prompt = f"""
 아래 역사 씬 목록의 내레이션을 유튜브 쇼츠용 자연스러운 호흡 자막 청크로 분할해주세요.
 
 [입력 씬 목록]
@@ -161,7 +217,7 @@ def analyze_dynamic_chunks(scenes, gcp_project_id=GCP_PROJECT_ID, gcp_location=G
             for c in sc.get("chunks", []):
                 txt = c.get("text", "").strip()
                 hl = c.get("highlight", "").strip()
-                if not hl or hl not in txt:
+                if not hl or hl.lower() not in txt.lower():
                     words = [w.strip(".,?!'\"[]()~") for w in txt.split() if len(w.strip(".,?!'\"[]()~")) >= 2]
                     c["highlight"] = max(words, key=len) if words else ""
         print(f"  ✨ [Subtitle] Gemini 2.5 Flash 기반 다이내믹 자막 청크 & 키워드 분할 완료 ({len(analyzed_scenes)}씬)")
@@ -173,7 +229,7 @@ def analyze_dynamic_chunks(scenes, gcp_project_id=GCP_PROJECT_ID, gcp_location=G
             s_num = sc.get("scene_number", sc.get("scene_no", 1))
             fallback_scenes.append({
                 "scene_number": s_num,
-                "chunks": rule_based_chunking(sc.get("script", ""))
+                "chunks": rule_based_chunking(sc.get("script", ""), lang=lang)
             })
         return fallback_scenes
 

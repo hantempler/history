@@ -20,15 +20,154 @@ def clean_narration_text(text: str) -> str:
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
-def generate_killer_script(target_date=None):
+def generate_english_script_from_base(client, base_script_data: dict, clean_date: str) -> dict:
+    """한국어 베이스 6씬 대본을 1:1 매핑하여 BBC/넷플릭스 다큐멘터리 급 영문 대본으로 적응 집필."""
+    month_names = ["January", "February", "March", "April", "May", "June",
+                   "July", "August", "September", "October", "November", "December"]
+    mm = int(clean_date[4:6])
+    dd = int(clean_date[6:8])
+    month_name = month_names[mm - 1]
+    eng_date_str = f"{month_name} {dd}"
+
+    scenes = base_script_data.get("scenes", [])
+    scenes_context = []
+    for sc in scenes:
+        scenes_context.append({
+            "scene_number": sc.get("scene_number"),
+            "korean_title": sc.get("display_title", ""),
+            "korean_script": sc.get("script", ""),
+            "image_caption_kr": sc.get("image_caption", ""),
+            "image_search_keyword": sc.get("image_search_keyword", "")
+        })
+
+    prompt = f"""
+    You are a master English documentary writer specializing in BBC/Netflix style 3-minute historical shorts for a global audience (1M+ subscribers).
+    Today's historical date is {eng_date_str}.
+    
+    Below is the curated historical narrative composed of 6 scenes (Scenes 1-4: Killer Main Story, Scenes 5-6: Fascinating Speed Facts):
+    {json.dumps(scenes_context, ensure_ascii=False, indent=2)}
+    
+    [Instructions - BBC/Netflix Quality Global Documentary]:
+    1. Hook: Write a shocking, provocative, high-suspense opening question (hook_question) within 15 words.
+    2. Scenes 1-4 (Main Story):
+       - Scene 1: [Inciting Incident] The rising crisis or tragedy that set the world on edge (40-55 words).
+       - Scene 2: [Rising Action] Clashing powers, desperate negotiations, or high-stakes struggle (40-55 words).
+       - Scene 3: [Climax] The dramatic tipping point or fateful decision (40-55 words).
+       - Scene 4: [Resolution & Legacy] The seismic turning point and butterfly effect on modern history (40-55 words).
+    3. Scenes 5-6 (Speed Facts):
+       - 25-35 words each. Fascinating, punchy historical facts with surprising details.
+    4. [CRITICAL FORMATTING RULES]:
+       - ABSOLUTELY NO EMOJIS (No hourglass, scrolls, monuments, etc.).
+       - display_title: 3-5 words in ALL UPPERCASE (e.g., 'THE DAWN OF CRISIS', 'FALL OF THE EMPIRE').
+       - image_caption: 3-6 words in English describing the historical archive or reconstruction.
+    5. outro_debate: An ethical, strategic, or philosophical dilemma for audience debate:
+       - badge: "HISTORICAL DILEMMA: PERSPECTIVE A vs B"
+       - target_entity: The core historical event or decision (e.g., "The Westphalian Peace of 1648")
+       - question_a_1: First line of Perspective A
+       - question_a_2: Second line of Perspective A
+       - question_b_1: First line of Perspective B
+       - question_b_2: Second line of Perspective B
+    6. Language & Tone: Use gripping, cinematic, formal documentary English.
+    
+    [Output JSON Format]:
+    {{
+        "corner_name": "History Time Machine",
+        "event_title": "{base_script_data.get('main_year', '')} {eng_date_str}",
+        "main_year": "{base_script_data.get('main_year', '')}",
+        "hook_question": "Shocking question?",
+        "why_today_title": "Why It Matters Today",
+        "why_today_desc": "Profound insight in one sentence",
+        "bgm": "{base_script_data.get('bgm', 'ancient_rite.mp3')}",
+        "lang": "en",
+        "outro_debate": {{
+            "badge": "HISTORICAL DILEMMA: PERSPECTIVE A vs B",
+            "target_entity": "Event Name",
+            "question_a_1": "Perspective A line 1",
+            "question_a_2": "Perspective A line 2",
+            "question_b_1": "Perspective B line 1",
+            "question_b_2": "Perspective B line 2"
+        }},
+        "scenes": [
+            {{
+                "scene_number": 1,
+                "display_title": "SCENE 1 TITLE",
+                "script": "English narration (40-55 words)...",
+                "image_search_keyword": "keyword",
+                "image_caption": "English archive caption",
+                "ai_image_prompt": "Cinematic prompt..."
+            }}
+        ]
+    }}
+    """
+    res = client.models.generate_content(
+        model='gemini-2.5-flash',
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            temperature=0.7
+        )
+    )
+    en_data = json.loads(res.text.strip())
+    en_data["lang"] = "en"
+    en_data["bgm"] = base_script_data.get("bgm", "ancient_rite.mp3")
+    en_data["main_year"] = base_script_data.get("main_year", "")
+
+    # base_script_data의 이미지 메타데이터(크레딧, 타입, 프롬프트) 병합
+    base_scenes_map = {sc.get("scene_number", idx + 1): sc for idx, sc in enumerate(scenes)}
+    for idx, sc in enumerate(en_data.get("scenes", [])):
+        s_num = sc.get("scene_number", idx + 1)
+        base_sc = base_scenes_map.get(s_num, {})
+        sc["script"] = clean_narration_text(sc.get("script", ""))
+        sc["image_type"] = base_sc.get("image_type", "archive")
+        sc["image_search_keyword"] = base_sc.get("image_search_keyword", sc.get("image_search_keyword", ""))
+        sc["ai_image_prompt"] = base_sc.get("ai_image_prompt", sc.get("ai_image_prompt", ""))
+        if not sc.get("image_caption"):
+            sc["image_caption"] = base_sc.get("image_caption", "Historical Record")
+        if sc.get("image_type") == "ai_generated":
+            sc["credit"] = "Visualized by Vertex AI (Historical Reconstruction)"
+        else:
+            sc["credit"] = "Archive Source: Wikimedia Commons"
+
+    return en_data
+
+
+def generate_killer_script(target_date=None, edition="history", base_script_data=None):
     client = genai.Client(vertexai=True, project=GCP_PROJECT_ID, location=GCP_LOCATION)
     
     if not target_date:
         target_date = datetime.now(KST).strftime("%Y%m%d")
         
-    daily_dir = get_daily_dir(target_date)
+    clean_date = target_date.replace("-", "")
+    daily_dir = get_daily_dir(clean_date)
+    is_english = edition in ("history_en", "en")
+
+    # 영문 에디션 처리 분기
+    if is_english:
+        print(f"\n[ScriptGen] 글로벌 영문판(history_en) 대본 생성 시작 (대상: {clean_date})")
+        if not base_script_data:
+            ko_script_p = os.path.join(get_daily_dir(clean_date, edition="history"), "masterpiece_script.json")
+            if not os.path.exists(ko_script_p):
+                ko_script_p = os.path.join(daily_dir, "masterpiece_script.json")
+
+            if os.path.exists(ko_script_p):
+                with open(ko_script_p, "r", encoding="utf-8") as f:
+                    base_script_data = json.load(f)
+            else:
+                print("  ℹ️ 한국어 베이스 대본이 없어 한국어 큐레이션 먼저 수행 후 영문화합니다...")
+                generate_killer_script(clean_date, edition="history")
+                with open(ko_script_p, "r", encoding="utf-8") as f:
+                    base_script_data = json.load(f)
+
+        en_script_data = generate_english_script_from_base(client, base_script_data, clean_date)
+        en_out_dir = get_daily_dir(clean_date, edition="history_en")
+        output_path = os.path.join(en_out_dir, "masterpiece_script.json")
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(en_script_data, f, ensure_ascii=False, indent=2)
+        print(f"✅ [ScriptGen] 글로벌 영문판(history_en) 네이티브 대본 집필 완료: {output_path}")
+        return output_path
+
+    # 한국어 에디션 처리 분기
     raw_path = os.path.join(daily_dir, "1_raw_events.json")
-    
     if not os.path.exists(raw_path):
         from src.wiki_collector import collect_wiki_events
         raw_path = collect_wiki_events(target_date)
@@ -38,7 +177,6 @@ def generate_killer_script(target_date=None):
     with open(raw_path, "r", encoding="utf-8") as f:
         events = json.load(f)
         
-    clean_date = target_date.replace("-", "")
     month = int(clean_date[4:6])
     day = int(clean_date[6:8])
     month_day = f"{month}월 {day}일"
@@ -218,6 +356,7 @@ def generate_killer_script(target_date=None):
     )
     
     script_data = json.loads(script_res.text.strip())
+    script_data["lang"] = "ko"
     
     # 텍스트 클리닝 (특수기호 제거)
     for sc in script_data.get("scenes", []):
@@ -236,12 +375,20 @@ def generate_killer_script(target_date=None):
         except Exception:
             script_data["bgm"] = bgm_candidates[0]
 
-    output_path = os.path.join(daily_dir, "masterpiece_script.json")
+    # 한국어 전용 디렉토리 및 공통 루트에 저장
+    ko_dir = get_daily_dir(clean_date, edition="history")
+    output_path = os.path.join(ko_dir, "masterpiece_script.json")
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(script_data, f, ensure_ascii=False, indent=2)
+
+    # 하위 호환성을 위해 공통 루트에도 동기화
+    root_script_path = os.path.join(daily_dir, "masterpiece_script.json")
+    with open(root_script_path, "w", encoding="utf-8") as f:
+        json.dump(script_data, f, ensure_ascii=False, indent=2)
         
-    print(f"✅ [ScriptGen] 4~5개 사건 deepdive 규격 대본 작성 완료: {output_path}")
+    print(f"✅ [ScriptGen] 한국어 deepdive 규격 대본 작성 완료: {output_path}")
     return output_path
 
 if __name__ == "__main__":
     generate_killer_script()
+

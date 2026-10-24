@@ -211,6 +211,17 @@ def source_scene_images(script_data: dict, out_dir: str):
         success = False
         source_title = None
 
+        # 0. 이미 캐싱된 고화질 이미지가 존재하는 경우 즉시 재사용
+        if os.path.exists(dest_path) and os.path.getsize(dest_path) > 1000:
+            if not sc.get("image_type"):
+                sc["image_type"] = "archive"
+            if not sc.get("credit"):
+                sc["credit"] = "출처: 역사 기록 사료 / 위키미디어 커먼즈"
+            if not sc.get("image_caption"):
+                sc["image_caption"] = caption_kr or keyword or "역사 사료 장면"
+            print(f"    ♻️ [사료 캐시 재사용] 씬 {s_num}: '{sc['image_caption']}' ({dest_path})")
+            continue
+
         # 1. 위키미디어 사료 우선 탐색 및 검증
         if keyword:
             success, source_title = search_wikimedia_image(keyword, script_text[:80], dest_path)

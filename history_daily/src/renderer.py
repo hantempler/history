@@ -146,7 +146,7 @@ def sanitize_tofu(text):
 # -------------------------------------------------------------
 # [0~4.2초] 표지 인트로 영상 (넷플릭스/방송 다큐멘터리 스타일 무비 포스터 타이포그래피, 박스/알약 0%)
 # -------------------------------------------------------------
-def render_intro_cover_image(bg_path, header_str, highlight_cat, main_title, why_title=None, why_desc=None, target_date_str=None, kicker_str=None):
+def render_intro_cover_image(bg_path, header_str, highlight_cat, main_title, why_title=None, why_desc=None, target_date_str=None, kicker_str=None, lang="ko"):
     base_img = load_and_fill_fullscreen(bg_path)
     
     # 날짜 분석
@@ -183,7 +183,13 @@ def render_intro_cover_image(bg_path, header_str, highlight_cat, main_title, why
     f_cue = get_font(24)
 
     # 1. 상단 미니멀 날짜/브랜딩 (알약/박스 없음!)
-    top_txt = f"{month_num}월 {day_num}일  |  역사 속 오늘"
+    month_names_en = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE",
+                      "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"]
+    if lang == "en":
+        m_name = month_names_en[max(0, min(11, month_num - 1))]
+        top_txt = f"{m_name} {day_num}  |  ON THIS DAY"
+    else:
+        top_txt = f"{month_num}월 {day_num}일  |  역사 속 오늘"
     tb = draw.textbbox((0, 0), top_txt, font=f_top)
     draw.text(((CANVAS_W - (tb[2] - tb[0])) // 2, 230), top_txt, font=f_top, fill=(255, 215, 0), stroke_width=3, stroke_fill="black")
 
@@ -217,7 +223,7 @@ def render_intro_cover_image(bg_path, header_str, highlight_cat, main_title, why
     draw.line([(380, div_y), (700, div_y)], fill=(229, 169, 60, 220), width=2)
 
     # 4. 서브 훅 설명 (충분한 좌우 여백과 줄바꿈)
-    why_text = sanitize_tofu(why_desc or why_title or "주권국가 체제의 초석을 다진 1648년 베스트팔렌 조약의 진실")
+    why_text = sanitize_tofu(why_desc or why_title or ("The turning point that shaped modern history" if lang == "en" else "주권국가 체제의 초석을 다진 베스트팔렌 조약의 진실"))
     w_words = why_text.split()
     w_lines, w_cur = [], []
     for w in w_words:
@@ -238,7 +244,7 @@ def render_intro_cover_image(bg_path, header_str, highlight_cat, main_title, why
         sub_y += 42
 
     # 5. 하단 탐구 유도 문구
-    cue = "오늘의 역사 깊이보기"
+    cue = "EXPLORE TODAY'S HISTORY" if lang == "en" else "오늘의 역사 깊이보기"
     cb = draw.textbbox((0, 0), cue, font=f_cue)
     draw.text(((CANVAS_W - (cb[2] - cb[0])) // 2, sub_y + 55), cue, font=f_cue, fill=(229, 169, 60), stroke_width=2, stroke_fill="black")
 
@@ -248,13 +254,14 @@ def render_intro_cover_image(bg_path, header_str, highlight_cat, main_title, why
 # -------------------------------------------------------------
 # [본문용] 방송사 다큐멘터리 스타일 상단 통합 헤더 (알약 0%, 사료 상단 배치 100% 가시성)
 # -------------------------------------------------------------
-def draw_cinematic_scene_header(draw, base_img, date_str, scene_title, archive_caption=None, credit_str=None, image_type="archive"):
+def draw_cinematic_scene_header(draw, base_img, date_str, scene_title, archive_caption=None, credit_str=None, image_type="archive", lang="ko"):
     font_date = get_font(28)
     font_title = get_font(48)
     font_arc = get_font(24)
 
     # 1. 상단 날짜 (28pt 골드, 알약 없음!)
-    clean_date = sanitize_tofu(date_str) if date_str else "오늘의 역사"
+    fallback_date = "ON THIS DAY" if lang == "en" else "오늘의 역사"
+    clean_date = sanitize_tofu(date_str) if date_str else fallback_date
     db = draw.textbbox((0, 0), clean_date, font=font_date)
     draw.text(((CANVAS_W - (db[2] - db[0])) // 2, 155), clean_date, font=font_date, fill=(255, 215, 0), stroke_width=3, stroke_fill="black")
 
@@ -272,19 +279,27 @@ def draw_cinematic_scene_header(draw, base_img, date_str, scene_title, archive_c
         src_suffix = ""
         is_ai = (image_type == "ai_generated") or (credit_str and ("Vertex AI" in credit_str or "AI 생성" in credit_str or "AI" in credit_str))
         
-        if is_ai:
-            prefix = "AI 생성"
-            if credit_str and "Vertex AI" in credit_str:
+        if lang == "en":
+            if is_ai:
+                prefix = "AI GENERATED"
                 src_suffix = " (Vertex AI)"
             else:
-                src_suffix = " (AI 복원)"
+                prefix = "ARCHIVE"
+                src_suffix = " (Wikimedia Commons)"
         else:
-            prefix = "사료"
-            if credit_str:
-                if "위키미디어" in credit_str:
-                    src_suffix = " (위키미디어 커먼즈)"
-                elif "연방기록관" in credit_str:
-                    src_suffix = " (독일 연방기록관)"
+            if is_ai:
+                prefix = "AI 생성"
+                if credit_str and "Vertex AI" in credit_str:
+                    src_suffix = " (Vertex AI)"
+                else:
+                    src_suffix = " (AI 복원)"
+            else:
+                prefix = "사료"
+                if credit_str:
+                    if "위키미디어" in credit_str:
+                        src_suffix = " (위키미디어 커먼즈)"
+                    elif "연방기록관" in credit_str:
+                        src_suffix = " (독일 연방기록관)"
 
         arc_txt = f"{prefix} : {clean_cap}{src_suffix}"
         ab = draw.textbbox((0, 0), arc_txt, font=font_arc)
@@ -509,7 +524,7 @@ def split_to_two_lines(text: str):
 # -------------------------------------------------------------
 # [아웃트로 피날레] 세련된 시청자 인터랙션 투표 카드 (A vs B)
 # -------------------------------------------------------------
-def render_outro_finale_image(bg_path, credit_str, outro_debate=None, date_title_str=None):
+def render_outro_finale_image(bg_path, credit_str, outro_debate=None, date_title_str=None, lang="ko"):
     base_img = load_and_fill_fullscreen(bg_path)
     base_img = base_img.filter(ImageFilter.GaussianBlur(radius=8))
     base_img = ImageEnhance.Brightness(base_img).enhance(0.40)
@@ -524,35 +539,76 @@ def render_outro_finale_image(bg_path, credit_str, outro_debate=None, date_title
     f_cta_sub = get_font(26)
 
     # 1. 상단 타이틀 (알약/박스 없음!)
-    top_txt = "역사가 남긴 질문"
+    top_txt = "QUESTIONS HISTORY LEFT BEHIND" if lang == "en" else "역사가 남긴 질문"
     tb = draw.textbbox((0, 0), top_txt, font=f_top)
     draw.text(((CANVAS_W - (tb[2] - tb[0])) // 2, 380), top_txt, font=f_top, fill=(255, 215, 0), stroke_width=3, stroke_fill="black")
-    draw.line([(440, 435), (640, 435)], fill=(229, 169, 60, 220), width=2)
+    draw.line([(420, 435), (660, 435)], fill=(229, 169, 60, 220), width=2)
 
-    # 2. 중심 철학적 질문 (여운을 주는 다큐 에필로그, VS 게임판 100% 배제)
-    target_title = outro_debate.get("target_entity", "1648년 베스트팔렌 조약") if outro_debate else "1648년 베스트팔렌 조약"
-    target_title = sanitize_tofu(target_title)
+    # 2. 중심 철학적 질문 (여운을 주는 다큐 에필로그)
+    if lang == "en":
+        target_title = outro_debate.get("target_entity", "This historical event") if outro_debate else "This historical event"
+        target_title = sanitize_tofu(target_title)
+        qa1 = outro_debate.get("question_a_1", "A triumph of diplomacy") if outro_debate else "A triumph of diplomacy"
+        qa2 = outro_debate.get("question_a_2", "what lessons does the past leave for us today?") if outro_debate else "what lessons does the past leave for us today?"
+        q1 = f'"{qa1},' if not qa1.startswith('"') else qa1
+        q2 = f'{qa2}"' if not qa2.endswith('"') else qa2
+        ev_txt = f"{target_title} asks us today"
+        c1 = "Share your thoughts in the comments"
+        c2 = "Subscribe to explore tomorrow's history first"
+    else:
+        target_title = outro_debate.get("target_entity", "1648년 베스트팔렌 조약") if outro_debate else "1648년 베스트팔렌 조약"
+        target_title = sanitize_tofu(target_title)
+        q1 = '"수백만의 피로 맺은 평화,'
+        q2 = '과연 진정한 공존이란 무엇일까요?"'
+        if outro_debate and "question_a_2" in outro_debate:
+            q_cand = sanitize_tofu(outro_debate.get("question_a_2", ""))
+            if q_cand and len(q_cand) > 5:
+                q1 = f'"{q_cand},'
+                q2 = '역사는 우리에게 어떤 답을 남겼을까요?"'
+        ev_txt = f"{target_title}이 오늘날 우리에게 묻습니다"
+        c1 = "댓글로 여러분의 생각을 들려주세요"
+        c2 = "구독하고 내일의 역사도 가장 먼저 만나보세요"
 
-    q1 = '"수백만의 피로 맺은 평화,'
-    q2 = '과연 진정한 공존이란 무엇일까요?"'
-    if outro_debate and "question_a_2" in outro_debate:
-        q_cand = sanitize_tofu(outro_debate.get("question_a_2", ""))
-        if q_cand and len(q_cand) > 5:
-            q1 = f'"{q_cand},'
-            q2 = '역사는 우리에게 어떤 답을 남겼을까요?"'
+    # 텍스트 줄바꿈 (화면 너비 860px 제한)
+    def wrap_text_lines(text_to_wrap, font, max_w=860):
+        words = text_to_wrap.strip().split()
+        res_lines, cur_l = [], []
+        for w in words:
+            cand = " ".join(cur_l + [w])
+            bb = draw.textbbox((0, 0), cand, font=font)
+            if (bb[2] - bb[0]) > max_w and cur_l:
+                res_lines.append(" ".join(cur_l))
+                cur_l = [w]
+            else:
+                cur_l.append(w)
+        if cur_l:
+            res_lines.append(" ".join(cur_l))
+        return res_lines
 
-    qb1 = draw.textbbox((0, 0), q1, font=f_q_main)
-    qb2 = draw.textbbox((0, 0), q2, font=f_q_main)
-    draw.text(((CANVAS_W - (qb1[2] - qb1[0])) // 2, 540), q1, font=f_q_main, fill=(255, 255, 255), stroke_width=4, stroke_fill="black")
-    draw.text(((CANVAS_W - (qb2[2] - qb2[0])) // 2, 615), q2, font=f_q_main, fill=(255, 255, 255), stroke_width=4, stroke_fill="black")
+    wrapped_lines = []
+    for q_part in [q1, q2]:
+        if q_part:
+            wrapped_lines.extend(wrap_text_lines(q_part, f_q_main, max_w=860))
 
-    ev_txt = f"{target_title}이 오늘날 우리에게 묻습니다"
+    cur_f_q = f_q_main
+    if len(wrapped_lines) > 2:
+        cur_f_q = get_font(38)
+        wrapped_lines = []
+        for q_part in [q1, q2]:
+            if q_part:
+                wrapped_lines.extend(wrap_text_lines(q_part, cur_f_q, max_w=860))
+
+    start_q_y = 520 if len(wrapped_lines) <= 2 else 480
+    step_q_y = 68 if len(wrapped_lines) <= 2 else 58
+    for idx_l, l_txt in enumerate(wrapped_lines[:4]):
+        qb = draw.textbbox((0, 0), l_txt, font=cur_f_q)
+        draw.text(((CANVAS_W - (qb[2] - qb[0])) // 2, start_q_y + idx_l * step_q_y), l_txt, font=cur_f_q, fill=(255, 255, 255), stroke_width=4, stroke_fill="black")
+
+    ev_y = start_q_y + len(wrapped_lines[:4]) * step_q_y + 35
     eb = draw.textbbox((0, 0), ev_txt, font=f_q_sub)
-    draw.text(((CANVAS_W - (eb[2] - eb[0])) // 2, 730), ev_txt, font=f_q_sub, fill=(225, 235, 245), stroke_width=2, stroke_fill="black")
+    draw.text(((CANVAS_W - (eb[2] - eb[0])) // 2, ev_y), ev_txt, font=f_q_sub, fill=(225, 235, 245), stroke_width=2, stroke_fill="black")
 
     # 3. 하단 CTA (유튜브 쇼츠 UI에 가려지지 않는 안전 영역 y=1200)
-    c1 = "댓글로 여러분의 생각을 들려주세요"
-    c2 = "구독하고 내일의 역사도 가장 먼저 만나보세요"
     cb1 = draw.textbbox((0, 0), c1, font=f_cta_main)
     cb2 = draw.textbbox((0, 0), c2, font=f_cta_sub)
     c_w = max(cb1[2] - cb1[0], cb2[2] - cb2[0]) + 70
@@ -567,7 +623,7 @@ def render_outro_finale_image(bg_path, credit_str, outro_debate=None, date_title
 # -------------------------------------------------------------
 # 본문 씬 렌더러
 # -------------------------------------------------------------
-def render_body_scene_chunk(bg_path, corner_name, date_title, credit_str, tts_text, audio_path, duration, out_chunk_mp4, temp_dir, zoom_in=True, subtitle_cards=None, caption_str=None, image_type="archive", dynamic_chunks=None, scene_title=None):
+def render_body_scene_chunk(bg_path, corner_name, date_title, credit_str, tts_text, audio_path, duration, out_chunk_mp4, temp_dir, zoom_in=True, subtitle_cards=None, caption_str=None, image_type="archive", dynamic_chunks=None, scene_title=None, lang="ko"):
     os.makedirs(temp_dir, exist_ok=True)
     frames = max(1, int(round(duration * FPS)))
 
@@ -584,7 +640,7 @@ def render_body_scene_chunk(bg_path, corner_name, date_title, credit_str, tts_te
 
     draw = ImageDraw.Draw(base_img)
     actual_title = scene_title or date_title
-    draw_cinematic_scene_header(draw, base_img, date_title, actual_title, archive_caption=caption_str, credit_str=credit_str, image_type=image_type)
+    draw_cinematic_scene_header(draw, base_img, date_title, actual_title, archive_caption=caption_str, credit_str=credit_str, image_type=image_type, lang=lang)
 
     base_bg_png = os.path.join(temp_dir, "base_bg.png")
     base_img.convert("RGB").save(base_bg_png, "PNG")
@@ -598,7 +654,7 @@ def render_body_scene_chunk(bg_path, corner_name, date_title, credit_str, tts_te
     )
 
     if not dynamic_chunks:
-        dynamic_chunks = rule_based_chunking(tts_text)
+        dynamic_chunks = rule_based_chunking(tts_text, lang=lang)
 
     lead_in = get_audio_voice_activity(audio_path, ffmpeg_bin=FFMPEG)
     timings = calculate_weighted_timings(dynamic_chunks, duration, lead_in=lead_in)
@@ -723,7 +779,7 @@ def assemble_final_shorts(chunk_mp4_list, bgm_mp3, final_output_mp4, temp_dir, b
     return total_dur
 
 
-def render_masterpiece_from_script(target_dir):
+def render_masterpiece_from_script(target_dir, lang=None):
     target_dir = os.path.abspath(target_dir)
     script_p = os.path.join(target_dir, "masterpiece_script.json")
     if not os.path.exists(script_p):
@@ -732,11 +788,24 @@ def render_masterpiece_from_script(target_dir):
     with open(script_p, "r", encoding="utf-8") as f:
         meta = json.load(f)
 
-    corner_name = meta.get("corner_name", "1분 타임머신")
-    event_title = meta.get("event_title", "역사 속 오늘")
+    if lang is None:
+        lang = meta.get("lang")
+        if not lang:
+            if target_dir.endswith("en") or os.path.basename(target_dir) == "en":
+                lang = "en"
+            else:
+                lang = "ko"
+
+    corner_name = meta.get("corner_name", "History Time Machine" if lang == "en" else "1분 타임머신")
+    event_title = meta.get("event_title", "On This Day" if lang == "en" else "역사 속 오늘")
     bgm_name = meta.get("bgm", "bgm_history_epic.mp3")
 
     images_dir = os.path.join(target_dir, "images")
+    if not os.path.exists(images_dir) or not os.listdir(images_dir):
+        parent_images = os.path.join(os.path.dirname(target_dir), "images")
+        if os.path.exists(parent_images) and os.listdir(parent_images):
+            images_dir = parent_images
+
     audio_dir = os.path.join(target_dir, "audio")
     temp_dir = os.path.join(target_dir, "master_render_temp")
     if os.path.exists(temp_dir):
@@ -744,52 +813,69 @@ def render_masterpiece_from_script(target_dir):
     os.makedirs(temp_dir, exist_ok=True)
 
     date_basename = os.path.basename(os.path.normpath(target_dir))
+    if date_basename in ("ko", "en"):
+        date_basename = os.path.basename(os.path.dirname(os.path.normpath(target_dir)))
+
     match_year = re.search(r'\b(\d{3,4})년?\b', event_title)
     year_str = match_year.group(1) if match_year else date_basename[:4]
 
     digits = re.sub(r'\D', '', date_basename)
+    mm, dd = 10, 24
     if len(digits) >= 8:
         mm = int(digits[4:6])
         dd = int(digits[6:8])
-        master_date_title = f"{year_str}. {mm}. {dd} {event_title}".strip()
+
+    month_names_en = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE",
+                      "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"]
+    m_name_en = month_names_en[max(0, min(11, mm - 1))]
+
+    if lang == "en":
+        master_date_title = f"{m_name_en} {dd}, {year_str} {event_title}".strip()
     else:
-        master_date_title = f"{year_str} {event_title}".strip()
+        master_date_title = f"{year_str}. {mm}. {dd} {event_title}".strip()
 
     print("==================================================================")
-    print(f"🎬 [deepdive 정규 렌더링] [{corner_name}] {master_date_title}")
+    print(f"🎬 [deepdive 정규 렌더링 - 언어: {lang.upper()}] [{corner_name}] {master_date_title}")
     print(f"   작업 디렉토리: {target_dir}")
+    print(f"   사료 이미지 디렉토리: {images_dir}")
     print("==================================================================")
 
     chunks_list = []
     scenes = meta.get("scenes", [])
 
-    # [Step 0] 0~3초 표지 인트로
+    # [Step 0] 0~4.2초 표지 인트로
     cover_bg = os.path.join(images_dir, "scene_1.jpg") if os.path.exists(os.path.join(images_dir, "scene_1.jpg")) else None
-    try:
-        dt = datetime.strptime(date_basename[:10], "%Y-%m-%d")
-        weekday_kr = ["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"][dt.weekday()]
-        date_str = f"{dt.year}년 {dt.month}월 {dt.day}일({weekday_kr})"
-    except Exception:
-        date_str = f"역사 속 오늘"
+    main_yr = meta.get("main_year", year_str)
+    
+    if lang == "en":
+        cover_header = f"{m_name_en} {dd} | HISTORY TIME MACHINE"
+        kicker_txt = f"[ EVENTS OF {m_name_en} {dd}, {main_yr} ]" if len(digits) >= 8 else f"[ EVENTS OF {main_yr} ]"
+        why_title = meta.get("why_today_title", "Why It Matters Today")
+    else:
+        try:
+            dt = datetime.strptime(date_basename[:10], "%Y-%m-%d")
+            weekday_kr = ["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"][dt.weekday()]
+            date_str = f"{dt.year}년 {dt.month}월 {dt.day}일({weekday_kr})"
+        except Exception:
+            date_str = f"역사 속 오늘"
+        cover_header = f"{date_str} | 역사 타임머신"
+        kicker_txt = f"[ {main_yr}년 {mm}월 {dd}일의 사건 ]" if len(digits) >= 8 else f"[ {main_yr}년의 역사적 사건 ]"
+        why_title = meta.get("why_today_title", "오늘 알아야 할 이유")
 
-    cover_header = f"{date_str} | 역사 타임머신"
     cover_title = meta.get("hook_question", master_date_title)
-    why_title = meta.get("why_today_title", "오늘 알아야 할 이유")
     why_desc = meta.get("why_today_desc", "")
 
     COVER_DURATION = 4.2
     print(f"  [Step 0] 0~{COVER_DURATION}초 표지 인트로 영상 렌더링 (안정적 정지 홀드 적용)...")
-    main_yr = meta.get("main_year", year_str)
-    kicker_txt = f"[ {main_yr}년 {mm}월 {dd}일의 사건 ]" if len(digits) >= 8 else f"[ {main_yr}년의 역사적 사건 ]"
-    cover_img = render_intro_cover_image(cover_bg, cover_header, corner_name, cover_title, why_title, why_desc, target_date_str=date_basename, kicker_str=kicker_txt)
+    cover_img = render_intro_cover_image(cover_bg, cover_header, corner_name, cover_title, why_title, why_desc, target_date_str=date_basename, kicker_str=kicker_txt, lang=lang)
     cover_mp4 = os.path.join(temp_dir, "part_00_intro_cover.mp4")
     render_cover_chunk(cover_img, COVER_DURATION, cover_mp4, zoom_in=True)
     chunks_list.append(cover_mp4)
 
     # [Subtitle] 스타이즈본 벤치마킹 다이내믹 자막 청킹 & 키워드 분석
     from src.subtitle_engine import analyze_dynamic_chunks, build_pro_ass_file
-    print("  [Subtitle] Gemini 2.5 Flash 기반 다이내믹 자막 청크 및 킬러 키워드 하이라이트 분석 중...")
-    analyzed_scenes = analyze_dynamic_chunks(scenes)
+    print(f"  [Subtitle] Gemini 2.5 Flash 기반 다이내믹 자막 청크 및 킬러 키워드 하이라이트 분석 중 (언어: {lang})...")
+    analyzed_scenes = analyze_dynamic_chunks(scenes, lang=lang)
     analyzed_map = {s.get("scene_number", s.get("scene_no", idx+1)): s.get("chunks", []) for idx, s in enumerate(analyzed_scenes)}
 
     # ASS 자막 파일 생성
@@ -810,17 +896,23 @@ def render_masterpiece_from_script(target_dir):
         audio_p = os.path.join(audio_dir, f"scene{s_num}.mp3")
         dur = get_audio_duration(audio_p)
         image_type = sc.get("image_type", "archive")
-        display_title = sc.get("display_title", "오늘의 역사")
+        display_title = sc.get("display_title", "HISTORY MOMENT" if lang == "en" else "오늘의 역사")
         caption = sc.get("image_caption", "")
-        credit = sc.get("credit", "출처: 역사 기록 사료 / 위키미디어 커먼즈")
+        credit = sc.get("credit", "Archive: Wikimedia Commons" if lang == "en" else "출처: 역사 기록 사료 / 위키미디어 커먼즈")
 
         # 씬별 상단 뱃지 텍스트
-        if s_num <= 4:
-            sc_date_str = f"{mm}월 {dd}일 | {main_yr}년" if len(digits) >= 8 else f"{main_yr}년의 오늘"
+        if lang == "en":
+            if s_num <= 4:
+                sc_date_str = f"{m_name_en} {dd} | {main_yr}" if len(digits) >= 8 else f"{m_name_en} {dd}"
+            else:
+                sc_date_str = f"{m_name_en} {dd} | SPEED FACT"
         else:
-            yr_m = re.search(r'\b(\d{3,4})년', script_text)
-            sc_yr = yr_m.group(1) if yr_m else ""
-            sc_date_str = f"{sc_yr}년의 오늘" if sc_yr else "오늘의 역사"
+            if s_num <= 4:
+                sc_date_str = f"{mm}월 {dd}일 | {main_yr}년" if len(digits) >= 8 else f"{main_yr}년의 오늘"
+            else:
+                yr_m = re.search(r'\b(\d{3,4})년', script_text)
+                sc_yr = yr_m.group(1) if yr_m else ""
+                sc_date_str = f"{sc_yr}년의 오늘" if sc_yr else "오늘의 역사"
 
         print(f"  [Step {idx+1}] 씬 {s_num}: {dur:.1f}s - [{display_title}] {caption}...")
         sc_mp4 = os.path.join(temp_dir, f"part_{s_num:02d}.mp4")
@@ -840,7 +932,8 @@ def render_masterpiece_from_script(target_dir):
             caption_str=caption,
             image_type=image_type,
             dynamic_chunks=dynamic_chunks,
-            scene_title=display_title
+            scene_title=display_title,
+            lang=lang
         )
         chunks_list.append(sc_mp4)
 
@@ -848,8 +941,11 @@ def render_masterpiece_from_script(target_dir):
     print("  [Step 6] 3.5초 정갈한 인터랙션 아웃트로 피날레 렌더링...")
     last_img = os.path.join(images_dir, "scene_1.jpg") if os.path.exists(os.path.join(images_dir, "scene_1.jpg")) else (os.path.join(images_dir, f"scene_{len(scenes)}.jpg") if scenes else None)
     outro_debate = meta.get("outro_debate", {})
-    date_title_h = f"{mm}월 {dd}일의 역사 다큐멘터리" if len(digits) >= 8 else "역사 다큐멘터리"
-    outro_img = render_outro_finale_image(last_img, "오늘의 역사 아카이브", outro_debate=outro_debate, date_title_str=date_title_h)
+    if lang == "en":
+        date_title_h = f"{m_name_en} {dd} History Documentary"
+    else:
+        date_title_h = f"{mm}월 {dd}일의 역사 다큐멘터리" if len(digits) >= 8 else "역사 다큐멘터리"
+    outro_img = render_outro_finale_image(last_img, "Public History Archive" if lang == "en" else "오늘의 역사 아카이브", outro_debate=outro_debate, date_title_str=date_title_h, lang=lang)
     outro_mp4 = os.path.join(temp_dir, "part_99_outro_finale.mp4")
     render_cover_chunk(outro_img, 3.5, outro_mp4, zoom_in=False)
     chunks_list.append(outro_mp4)
@@ -860,11 +956,18 @@ def render_masterpiece_from_script(target_dir):
     if not os.path.exists(bgm_path):
         bgm_path = os.path.join(BGM_DIR, "bgm_history_epic.mp3")
 
-    final_output = os.path.join(target_dir, f"final_masterpiece_{date_basename}.mp4")
+    final_output = os.path.join(target_dir, f"final_shorts_{lang}.mp4")
     total_sec = assemble_final_shorts(chunks_list, bgm_path, final_output, temp_dir, bgm_vol=0.22)
     file_size_mb = os.path.getsize(final_output) / (1024 * 1024)
 
-    print(f"\n🎉 [마스터피스 완성] {final_output}")
+    # 하위 호환성을 위해 기존 이름 파일도 생성/복사
+    compat_output = os.path.join(target_dir, f"final_masterpiece_{date_basename}.mp4")
+    try:
+        shutil.copy2(final_output, compat_output)
+    except Exception:
+        pass
+
+    print(f"\n🎉 [마스터피스 완성 ({lang.upper()})] {final_output}")
     print(f"  총 재생시간: {total_sec:.2f}초 | 파일 크기: {file_size_mb:.2f} MB")
     return final_output
 

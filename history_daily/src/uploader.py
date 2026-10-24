@@ -66,10 +66,12 @@ def build_service():
     return build("youtube", "v3", credentials=creds)
 
 
-def build_video_metadata(script_data: dict, script_path: str = "") -> dict:
+def build_video_metadata(script_data: dict, script_path: str = "", edition="history") -> dict:
     """masterpiece_script.json 데이터를 파싱하여 고품격 SEO 메타데이터 생성."""
-    corner_name = script_data.get("corner_name", "역사 타임머신")
-    event_title = script_data.get("event_title", "역사의 순간")
+    is_english = edition in ("history_en", "en") or script_data.get("lang") == "en"
+
+    corner_name = script_data.get("corner_name", "History Time Machine" if is_english else "역사 타임머신")
+    event_title = script_data.get("event_title", "Turning Point in History" if is_english else "역사의 순간")
     hook_question = script_data.get("hook_question", "")
     why_desc = script_data.get("why_today_desc", "")
     scenes = script_data.get("scenes", [])
@@ -86,7 +88,8 @@ def build_video_metadata(script_data: dict, script_path: str = "") -> dict:
         title = title[:94] + "... #Shorts"
 
     # 2. 타임라인 목차 조립 (타임코드 + 씬 소제목)
-    timeline_lines = ["00:00 [인트로] 오늘의 역사 타임머신"]
+    intro_label = "Today in History" if is_english else "오늘의 역사 타임머신"
+    timeline_lines = [f"00:00 [Intro] {intro_label}"]
     accum_sec = 4  # 인트로 커버 4.2초
     script_dir = os.path.dirname(os.path.abspath(script_path)) if script_path else ""
 
@@ -98,10 +101,11 @@ def build_video_metadata(script_data: dict, script_path: str = "") -> dict:
         s_val = accum_sec % 60
         timecode = f"{m_val:02d}:{s_val:02d}"
 
+        tag_name = f"Scene {s_num}" if is_english else f"씬 {s_num}"
         if d_title:
-            timeline_lines.append(f"{timecode} [씬 {s_num}] {d_title}")
+            timeline_lines.append(f"{timecode} [{tag_name}] {d_title}")
         else:
-            timeline_lines.append(f"{timecode} [씬 {s_num}]")
+            timeline_lines.append(f"{timecode} [{tag_name}]")
 
         scene_dur = 12
         if script_dir:
@@ -112,26 +116,40 @@ def build_video_metadata(script_data: dict, script_path: str = "") -> dict:
 
     m_val = accum_sec // 60
     s_val = accum_sec % 60
-    timeline_lines.append(f"{m_val:02d}:{s_val:02d} [에필로그] 역사가 남긴 질문")
+    outro_label = "Questions History Left Behind" if is_english else "역사가 남긴 질문"
+    timeline_lines.append(f"{m_val:02d}:{s_val:02d} [Epilogue] {outro_label}")
 
     timeline_text = "\n".join(timeline_lines)
 
     # 3. 본문 설명 (Description) 조립
-    outro_q = script_data.get("outro_debate", {}).get("question_a_2", "역사의 교훈과 성찰")
-    desc_blocks = [
-        f"⏳ {hook_question}\n{why_desc}".strip(),
-        f"📖 [오늘의 역사 타임라인 & 챕터]\n{timeline_text}",
-        f"🏛️ [시각 사료 및 제작 크레딧]\n• 역사 사료: 위키미디어 커먼즈(Wikimedia Commons) 및 공공 역사 아카이브\n• AI 고증 복원: Google Vertex AI 시각화 모델\n• 배경음악: {bgm_name} (Royalty Free Archive)",
-        f"💬 [생각해볼 질문]\n\"{outro_q}\"",
-        f"#역사 #오늘의역사 #쇼츠 #Shorts #다큐멘터리 #{clean_corner_tag}"
-    ]
+    outro_q = script_data.get("outro_debate", {}).get("question_a_2", "Lessons from history" if is_english else "역사의 교훈과 성찰")
+    if is_english:
+        desc_blocks = [
+            f"⏳ {hook_question}\n{why_desc}".strip(),
+            f"📖 [Timeline & Chapters]\n{timeline_text}",
+            f"🏛️ [Visual Archives & Credits]\n• Historical Archives: Wikimedia Commons & Public Domain Records\n• AI Reconstruction: Google Vertex AI Visual Engine\n• Music: {bgm_name} (Royalty Free Archive)",
+            f"💬 [Question to Ponder]\n\"{outro_q}\"",
+            f"#history #onthisday #documentary #shorts #worldhistory #history_en"
+        ]
+        default_lang = "en"
+        base_tags = ["history", "onthisday", "shorts", "documentary", "worldhistory", "history_en"]
+    else:
+        desc_blocks = [
+            f"⏳ {hook_question}\n{why_desc}".strip(),
+            f"📖 [오늘의 역사 타임라인 & 챕터]\n{timeline_text}",
+            f"🏛️ [시각 사료 및 제작 크레딧]\n• 역사 사료: 위키미디어 커먼즈(Wikimedia Commons) 및 공공 역사 아카이브\n• AI 고증 복원: Google Vertex AI 시각화 모델\n• 배경음악: {bgm_name} (Royalty Free Archive)",
+            f"💬 [생각해볼 질문]\n\"{outro_q}\"",
+            f"#역사 #오늘의역사 #쇼츠 #Shorts #다큐멘터리 #{clean_corner_tag}"
+        ]
+        default_lang = "ko"
+        base_tags = list(DEFAULT_TAGS)
 
     desc = "\n\n".join(desc_blocks)
     if len(desc) > 4800:
         desc = desc[:4800]
 
     # 4. 태그 조립 (최대 15개)
-    tags = list(DEFAULT_TAGS)
+    tags = list(base_tags)
     tags.append(clean_corner_tag)
     if event_title:
         tags.extend([w for w in re.findall(r'[\w가-힣]+', event_title) if len(w) >= 2])
@@ -146,11 +164,13 @@ def build_video_metadata(script_data: dict, script_path: str = "") -> dict:
     return {
         "title": title,
         "description": desc,
-        "tags": unique_tags[:15]
+        "tags": unique_tags[:15],
+        "defaultLanguage": default_lang,
+        "defaultAudioLanguage": default_lang
     }
 
 
-def upload_masterpiece_video(video_path: str, script_path: str, privacy: str = "private") -> dict:
+def upload_masterpiece_video(video_path: str, script_path: str, privacy: str = "private", edition: str = "history") -> dict:
     """최종 렌더링된 마스터피스 영상을 유튜브 쇼츠로 자동 업로드."""
     from googleapiclient.http import MediaFileUpload
 
@@ -162,12 +182,13 @@ def upload_masterpiece_video(video_path: str, script_path: str, privacy: str = "
     with open(script_path, "r", encoding="utf-8") as f:
         script_data = json.load(f)
 
-    meta = build_video_metadata(script_data, script_path=script_path)
+    meta = build_video_metadata(script_data, script_path=script_path, edition=edition)
 
     print("\n==================================================================")
-    print(f"🎬 [YouTube Shorts 자동 업로드 시작] ({privacy} 모드)")
+    print(f"🎬 [YouTube Shorts 자동 업로드 시작 - {edition}] ({privacy} 모드)")
     print(f"  📌 영상 파일: {os.path.basename(video_path)}")
     print(f"  📌 유튜브 제목: {meta['title']}")
+    print(f"  📌 언어 설정: defaultLanguage={meta['defaultLanguage']}")
     print("==================================================================")
 
     youtube = build_service()
@@ -177,7 +198,9 @@ def upload_masterpiece_video(video_path: str, script_path: str, privacy: str = "
             "title": meta["title"],
             "description": meta["description"],
             "tags": meta["tags"],
-            "categoryId": CATEGORY_EDUCATION
+            "categoryId": CATEGORY_EDUCATION,
+            "defaultLanguage": meta["defaultLanguage"],
+            "defaultAudioLanguage": meta["defaultAudioLanguage"]
         },
         "status": {
             "privacyStatus": privacy

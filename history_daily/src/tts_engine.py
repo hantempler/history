@@ -26,11 +26,11 @@ def clean_tts_text(text: str) -> str:
     return text
 
 
-def synthesize_with_retry(client, text, voice_name, speaking_rate, pitch, max_retries=2):
+def synthesize_with_retry(client, text, voice_name, speaking_rate, pitch, language_code="ko-KR", fallback_voice=None, max_retries=2):
     for attempt in range(max_retries + 1):
         try:
             voice_params = texttospeech.VoiceSelectionParams(
-                language_code="ko-KR",
+                language_code=language_code,
                 name=voice_name
             )
             audio_config = texttospeech.AudioConfig(
@@ -49,11 +49,11 @@ def synthesize_with_retry(client, text, voice_name, speaking_rate, pitch, max_re
                 print(f"    ⏳ [TTS 재시도 대기] {wait_sec}초 후 재시도 중 ({attempt+1}/{max_retries})... ({err_str[:60]})")
                 time.sleep(wait_sec)
             else:
-                fallback_voice = "ko-KR-Neural2-C" if voice_name != "ko-KR-Neural2-C" else "ko-KR-Neural2-A"
-                print(f"    🔄 [TTS 안전 폴백] 성우 전환 ({voice_name} -> {fallback_voice})...")
+                fb_voice = fallback_voice or ("ko-KR-Neural2-A" if "ko" in language_code else "en-US-Journey-F")
+                print(f"    🔄 [TTS 안전 폴백] 성우 전환 ({voice_name} -> {fb_voice})...")
                 voice_params = texttospeech.VoiceSelectionParams(
-                    language_code="ko-KR",
-                    name=fallback_voice
+                    language_code=language_code,
+                    name=fb_voice
                 )
                 audio_config = texttospeech.AudioConfig(
                     audio_encoding=texttospeech.AudioEncoding.MP3,
@@ -66,15 +66,26 @@ def synthesize_with_retry(client, text, voice_name, speaking_rate, pitch, max_re
                 )
 
 
-def generate_scene_audios(script_data: dict, out_dir: str):
+def generate_scene_audios(script_data: dict, out_dir: str, edition="history"):
     audio_dir = os.path.join(out_dir, "audio")
     os.makedirs(audio_dir, exist_ok=True)
 
-    voice_name = "ko-KR-Neural2-C"
-    speaking_rate = 1.05
-    pitch = -0.5
+    is_english = edition in ("history_en", "en") or script_data.get("lang") == "en"
 
-    print(f"\n[음성 합성 엔진] Google Cloud Neural2 - 성우: {voice_name} (속도: {speaking_rate}x, 피치: {pitch})")
+    if is_english:
+        language_code = "en-US"
+        voice_name = "en-US-Neural2-J"
+        fallback_voice = "en-US-Journey-F"
+        speaking_rate = 1.03
+        pitch = 0.0
+    else:
+        language_code = "ko-KR"
+        voice_name = "ko-KR-Neural2-C"
+        fallback_voice = "ko-KR-Neural2-A"
+        speaking_rate = 1.05
+        pitch = -0.5
+
+    print(f"\n[음성 합성 엔진] Google Cloud Neural2 - 언어: {language_code}, 성우: {voice_name} (속도: {speaking_rate}x, 피치: {pitch})")
 
     client = texttospeech.TextToSpeechClient()
     scenes = script_data.get("scenes", [])
@@ -90,8 +101,11 @@ def generate_scene_audios(script_data: dict, out_dir: str):
         if idx > 0:
             time.sleep(1.5)
 
-        print(f"  🎙️ [Scene {s_num}] 음성 합성: '{script_text[:30]}...'")
-        response = synthesize_with_retry(client, script_text, voice_name, speaking_rate, pitch)
+        print(f"  🎙️ [Scene {s_num}] 음성 합성: '{script_text[:40]}...'")
+        response = synthesize_with_retry(
+            client, script_text, voice_name, speaking_rate, pitch,
+            language_code=language_code, fallback_voice=fallback_voice
+        )
         with open(dest_audio, "wb") as f_out:
             f_out.write(response.audio_content)
 
