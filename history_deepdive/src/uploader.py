@@ -67,13 +67,17 @@ def build_video_metadata(script_data: dict, script_path: str = "") -> dict:
     # 특수문자(·, 공백, 하이픈 등)를 제거한 유효 해시태그 생성 (예: '전술·전쟁사' -> '전술전쟁사')
     clean_corner_tag = re.sub(r'[\s·\-\.\/]', '', corner_name)
 
-    # 1. 제목 (최대 100자 이내)
+    # 1. 제목 (유튜브 API 엄격 제한 100자 이내 보장)
+    suffix = " #Shorts"
     if hook_question:
-        title = f"[{corner_name}] {event_title} | {hook_question} #Shorts"
+        base_title = f"[{corner_name}] {event_title} | {hook_question}"
     else:
-        title = f"[{corner_name}] {event_title} #Shorts"
-    if len(title) > 100:
-        title = title[:96] + "... #Shorts"
+        base_title = f"[{corner_name}] {event_title}"
+
+    max_base_len = 95 - len(suffix)  # 87자 이내로 안전 절단
+    if len(base_title) > max_base_len:
+        base_title = base_title[:max_base_len - 3].rstrip() + "..."
+    title = f"{base_title}{suffix}"
 
     # 2. 타임라인 목차 조립 (타임코드 + 소제목 + 1줄 요약)
     timeline_lines = []

@@ -79,13 +79,17 @@ def build_video_metadata(script_data: dict, script_path: str = "", edition="hist
 
     clean_corner_tag = re.sub(r'[\s·\-\.\/]', '', corner_name)
 
-    # 1. 제목 (최대 100자 이내)
+    # 1. 제목 (유튜브 API 엄격 제한 100자 이내 보장)
+    suffix = " #Shorts"
     if hook_question:
-        title = f"[{corner_name}] {event_title} | {hook_question} #Shorts"
+        base_title = f"[{corner_name}] {event_title} | {hook_question}"
     else:
-        title = f"[{corner_name}] {event_title} #Shorts"
-    if len(title) > 98:
-        title = title[:94] + "... #Shorts"
+        base_title = f"[{corner_name}] {event_title}"
+
+    max_base_len = 95 - len(suffix)  # 87자 이내로 안전 절단
+    if len(base_title) > max_base_len:
+        base_title = base_title[:max_base_len - 3].rstrip() + "..."
+    title = f"{base_title}{suffix}"
 
     # 2. 타임라인 목차 조립 (타임코드 + 씬 소제목)
     intro_label = "Today in History" if is_english else "오늘의 역사 타임머신"
