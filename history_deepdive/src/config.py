@@ -11,9 +11,23 @@ FONT_PATH = os.path.join(CONFIG_DIR, "GmarketSansTTFBold.ttf")
 load_dotenv(ENV_PATH)
 
 # GCP / Vertex AI
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.path.join(CONFIG_DIR, "application_default_credentials.json")
-GCP_PROJECT_ID = "project-beba2bf6-d235-4031-ba5"
-GCP_LOCATION = "us-central1"
+import json
+CRED_PATH = os.path.join(CONFIG_DIR, "application_default_credentials.json")
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = CRED_PATH
+
+def _resolve_project_id():
+    cred = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", CRED_PATH)
+    if os.path.exists(cred):
+        try:
+            with open(cred, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return data.get("quota_project_id") or data.get("project_id")
+        except Exception:
+            pass
+    return os.getenv("GCP_PROJECT_ID", "project-092cc259-a7f0-4540-ab3")
+
+GCP_PROJECT_ID = _resolve_project_id()
+GCP_LOCATION = "global"
 
 from datetime import datetime
 

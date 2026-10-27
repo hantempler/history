@@ -96,7 +96,7 @@ def search_wikimedia_image(keyword: str, script_summary: str, dest_path: str) ->
                 )
 
                 v_resp = client.models.generate_content(
-                    model='gemini-2.5-flash',
+                    model='gemini-3.5-flash',
                     contents=[
                         types.Part.from_bytes(data=img_bytes, mime_type="image/jpeg"),
                         v_prompt
@@ -120,18 +120,11 @@ def search_wikimedia_image(keyword: str, script_summary: str, dest_path: str) ->
 
 
 def generate_image_with_nanobanana(prompt_text: str, dest_path: str, is_joseon: bool = False, max_retries: int = 4) -> bool:
-    """Vertex AI gemini-nano-banana-2.1 / imagen-3.0을 호출하여 9:16 시네마틱 역사 일러스트 생성
-    429 RESOURCE_EXHAUSTED 발생 시 즉시 폴백하지 않고 대기 후 자동 재시도
-    """
+    """Vertex AI gemini-nano-banana-2.1 (global)을 호출하여 9:16 시네마틱 역사 일러스트 생성"""
     client_global = genai.Client(
         vertexai=True,
         project=GCP_PROJECT_ID,
         location="global"
-    )
-    client_us = genai.Client(
-        vertexai=True,
-        project=GCP_PROJECT_ID,
-        location="us-central1"
     )
 
     base_style = "Authentic Korean Joseon Dynasty historical documentary visual: " if is_joseon else "Authentic dramatic historical documentary visual: "
@@ -141,43 +134,25 @@ def generate_image_with_nanobanana(prompt_text: str, dest_path: str, is_joseon: 
         "CRITICAL REQUIREMENT: Absolutely NO text, NO words, NO letters, NO alphabet, NO typography, NO hangul, NO korean writing, NO captions, NO titles, NO watermark. Completely pure visual imagery without any written characters."
     )
 
-    models_to_try = ["gemini-nano-banana-2.1", "imagen-3.0-generate-002"]
+    model_name = "gemini-nano-banana-2.1"
 
     for attempt in range(max_retries):
-        model_name = models_to_try[attempt % len(models_to_try)]
         try:
-            if "imagen" in model_name:
-                result = client_us.models.generate_images(
-                    model=model_name,
-                    prompt=full_prompt,
-                    config=types.GenerateImagesConfig(
-                        number_of_images=1,
-                        aspect_ratio="9:16",
-                        output_mime_type="image/jpeg",
-                    )
+            response = client_global.models.generate_content(
+                model=model_name,
+                contents=full_prompt,
+                config=types.GenerateContentConfig(
+                    response_modalities=["TEXT", "IMAGE"],
+                    candidate_count=1
                 )
-                if result.generated_images:
-                    img_bytes = result.generated_images[0].image.image_bytes
-                    with open(dest_path, "wb") as f:
-                        f.write(img_bytes)
-                    print(f"    ✨ [{model_name} 고증 생성 성공] {dest_path}")
-                    return True
-            else:
-                response = client_global.models.generate_content(
-                    model=model_name,
-                    contents=full_prompt,
-                    config=types.GenerateContentConfig(
-                        response_modalities=["TEXT", "IMAGE"],
-                        candidate_count=1
-                    )
-                )
-                if response.candidates:
-                    for part in response.candidates[0].content.parts:
-                        if hasattr(part, "inline_data") and part.inline_data:
-                            with open(dest_path, "wb") as f:
-                                f.write(part.inline_data.data)
-                            print(f"    ✨ [나노바나나 고증 생성 성공] {dest_path}")
-                            return True
+            )
+            if response.candidates:
+                for part in response.candidates[0].content.parts:
+                    if hasattr(part, "inline_data") and part.inline_data:
+                        with open(dest_path, "wb") as f:
+                            f.write(part.inline_data.data)
+                        print(f"    ✨ [나노바나나 고증 생성 성공] {dest_path}")
+                        return True
         except Exception as e:
             err_str = str(e)
             if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:

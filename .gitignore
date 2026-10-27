@@ -59,3 +59,7 @@ logs/
 !test_history/assets/*
 !test_history/assets/**
 !test_history/assets/bgm/*.mp3
+
+# Local Evergreen & Backups
+history_evergreen/
+*.bak

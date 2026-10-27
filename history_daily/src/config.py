@@ -15,8 +15,21 @@ CRED_PATH = os.path.join(CONFIG_DIR, "application_default_credentials.json")
 if os.path.exists(CRED_PATH):
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = CRED_PATH
 
-GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID", "project-beba2bf6-d235-4031-ba5")
-GCP_LOCATION = os.getenv("GCP_LOCATION", "us-central1")
+import json
+
+def _resolve_project_id():
+    cred = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", CRED_PATH)
+    if os.path.exists(cred):
+        try:
+            with open(cred, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return data.get("quota_project_id") or data.get("project_id")
+        except Exception:
+            pass
+    return os.getenv("GCP_PROJECT_ID", "project-092cc259-a7f0-4540-ab3")
+
+GCP_PROJECT_ID = _resolve_project_id()
+GCP_LOCATION = os.getenv("GCP_LOCATION", "global")
 
 FONT_MAIN = os.path.join(CONFIG_DIR, "GmarketSansTTFBold.ttf")
 FONT_TITLE = os.path.join(CONFIG_DIR, "BlackHanSans-Regular.ttf")

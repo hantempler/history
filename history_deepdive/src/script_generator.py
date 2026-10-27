@@ -17,8 +17,7 @@ CONFIG_DIR = os.path.join(BASE_DIR, 'config')
 CRED_PATH = os.path.join(CONFIG_DIR, 'application_default_credentials.json')
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = CRED_PATH
 
-GCP_PROJECT_ID = "project-beba2bf6-d235-4031-ba5"
-GCP_LOCATION = "us-central1"
+from src.config import GCP_PROJECT_ID, GCP_LOCATION
 
 
 def clean_narration_text(text: str) -> str:
@@ -270,9 +269,9 @@ def generate_masterpiece_script(routed_data: dict, out_dir: str) -> dict:
                         print(f"    ⏳ [429 Quota 대기] {wait_sec}초 후 재시도 중 ({attempt+1}/{max_retries})...")
                         time.sleep(wait_sec)
                     else:
-                        print(f"    🔄 [안전 폴백] gemini-2.5-flash 모델로 전환 호출...")
+                        print(f"    🔄 [안전 폴백] gemini-3.5-flash 모델로 전환 호출...")
                         return client.models.generate_content(
-                            model='gemini-2.5-flash',
+                            model='gemini-3.5-flash',
                             contents=contents_payload,
                             config=config_payload
                         )
@@ -280,7 +279,7 @@ def generate_masterpiece_script(routed_data: dict, out_dir: str) -> dict:
                     raise e
 
     response = call_gemini_with_retry(
-        model_name='gemini-2.5-pro',
+        model_name='gemini-3.5-flash',
         contents_payload=prompt,
         config_payload=types.GenerateContentConfig(
             response_mime_type="application/json",
@@ -373,7 +372,7 @@ def generate_masterpiece_script(routed_data: dict, out_dir: str) -> dict:
     fact_report = {}
     try:
         fact_response = call_gemini_with_retry(
-            model_name='gemini-2.5-pro',
+            model_name='gemini-3.5-flash',
             contents_payload=fact_check_prompt,
             config_payload=types.GenerateContentConfig(
                 response_mime_type="application/json",

@@ -22,9 +22,7 @@ CONFIG_DIR = BASE_DIR / "config"
 try:
     from .config import GCP_PROJECT_ID, GCP_LOCATION, FONT_MAIN
 except ImportError:
-    GCP_PROJECT_ID = "project-beba2bf6-d235-4031-ba5"
-    GCP_LOCATION = "us-central1"
-    FONT_MAIN = str(CONFIG_DIR / "GmarketSansTTFBold.ttf")
+    from src.config import GCP_PROJECT_ID, GCP_LOCATION, FONT_MAIN
 
 
 # ---------------------------------------------------------------------------
@@ -202,7 +200,7 @@ Split the following English history documentary narrations into natural speech s
 }}
 """
         resp = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.5-flash",
             contents=prompt,
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,

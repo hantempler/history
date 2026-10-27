@@ -100,7 +100,7 @@ def generate_english_script_from_base(client, base_script_data: dict, clean_date
     }}
     """
     res = client.models.generate_content(
-        model='gemini-2.5-flash',
+        model='gemini-3.5-flash',
         contents=prompt,
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
@@ -208,7 +208,7 @@ def generate_killer_script(target_date=None, edition="history", base_script_data
     """
     
     curation_res = client.models.generate_content(
-        model='gemini-2.5-flash',
+        model='gemini-3.5-flash',
         contents=curation_prompt,
         config=types.GenerateContentConfig(response_mime_type="application/json")
     )
@@ -347,7 +347,7 @@ def generate_killer_script(target_date=None, edition="history", base_script_data
     """
     
     script_res = client.models.generate_content(
-        model='gemini-2.5-flash',
+        model='gemini-3.5-flash',
         contents=script_prompt,
         config=types.GenerateContentConfig(
             response_mime_type="application/json",

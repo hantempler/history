@@ -53,7 +53,7 @@ def run_script_gen(target_date=None, edition='morning'):
     """
     
     selection_response = client.models.generate_content(
-        model='gemini-2.5-pro',
+        model='gemini-3.5-flash',
         contents=selection_prompt,
         config=types.GenerateContentConfig(response_mime_type="application/json")
     )
@@ -169,7 +169,7 @@ def run_script_gen(target_date=None, edition='morning'):
         """
     
     response = client.models.generate_content(
-        model='gemini-2.5-pro',
+        model='gemini-3.5-flash',
         contents=script_prompt,
         config=types.GenerateContentConfig(
             system_instruction=system_instruction,
@@ -202,7 +202,7 @@ def run_script_gen(target_date=None, edition='morning'):
         )
         
     fact_check_response = client.models.generate_content(
-        model='gemini-2.5-pro',
+        model='gemini-3.5-flash',
         contents=script_text,
         config=types.GenerateContentConfig(
             system_instruction=fact_check_instruction,
