@@ -5,7 +5,9 @@ import re
 import shutil
 import subprocess
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+
+KST = timezone(timedelta(hours=9))
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_DIR = os.path.join(BASE_DIR, "config")
@@ -185,8 +187,32 @@ def build_video_metadata(script_data: dict, script_path: str = "") -> dict:
     }
 
 
-def upload_masterpiece_video(video_path: str, script_path: str, privacy: str = "private") -> dict:
-    """최종 영상과 대본 JSON을 받아 유튜브에 자동 업로드."""
+def compute_scheduled_publish_time(target_date_str: str = None, target_hour: int = 19, target_minute: int = 0, schedule_hour: int = None):
+    """KST 기준 목표 예약 공개 시각을 계산하여 (publish_at_iso, privacy_status, log_msg) 반환"""
+    hour_to_use = schedule_hour if schedule_hour is not None else target_hour
+    now_kst = datetime.now(KST)
+    if target_date_str:
+        clean = re.sub(r'\D', '', str(target_date_str))
+        if len(clean) >= 8:
+            y, m, d = int(clean[:4]), int(clean[4:6]), int(clean[6:8])
+            sched_kst = datetime(y, m, d, hour_to_use, target_minute, 0, tzinfo=KST)
+        else:
+            sched_kst = now_kst.replace(hour=hour_to_use, minute=target_minute, second=0, microsecond=0)
+    else:
+        sched_kst = now_kst.replace(hour=hour_to_use, minute=target_minute, second=0, microsecond=0)
+
+    # 1분 이상의 여유가 있는 미래인 경우 예약 공개(publishAt) 적용
+    if sched_kst > (now_kst + timedelta(minutes=1)):
+        sched_utc = sched_kst.astimezone(timezone.utc)
+        publish_at_iso = sched_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
+        return publish_at_iso, "private", f"{sched_kst.strftime('%Y-%m-%d %H:%M:%S KST')} (UTC: {publish_at_iso})"
+    else:
+        # 이미 해당 목표 시각이 경과한 경우 400 에러를 방지하고 즉시 공개(public)
+        return None, "public", f"{sched_kst.strftime('%Y-%m-%d %H:%M:%S KST')} (목표 시각 경과 ➔ 즉시 public 공개)"
+
+
+def upload_masterpiece_video(video_path: str, script_path: str, privacy: str = "scheduled", target_date_str: str = None, schedule_hour: int = 19) -> dict:
+    """최종 영상과 대본 JSON을 받아 유튜브에 자동 업로드 (오후 7시 예약 공개 지원)."""
     from googleapiclient.http import MediaFileUpload
 
     if not os.path.exists(video_path):
@@ -199,13 +225,37 @@ def upload_masterpiece_video(video_path: str, script_path: str, privacy: str = "
 
     meta = build_video_metadata(script_data, script_path=script_path)
 
+    # 공개 상태 및 예약 공개(publishAt) 산출
+    publish_at_iso = None
+    actual_privacy = privacy
+    schedule_info = "수동 지정 모드"
+
+    if privacy == "scheduled":
+        publish_at_iso, actual_privacy, schedule_info = compute_scheduled_publish_time(
+            target_date_str=target_date_str,
+            target_hour=schedule_hour,
+            target_minute=0
+        )
+
     print("\n==================================================================")
-    print(f"🎬 [YouTube 자동 업로드 시작] ({privacy} 모드)")
+    print(f"🎬 [YouTube 자동 업로드 시작] ({actual_privacy} 모드)")
+    if publish_at_iso:
+        print(f"  ⏰ [예약 공개 설정] {schedule_info}")
+    else:
+        print(f"  📌 공개 상태: {actual_privacy} ({schedule_info})")
     print(f"  📌 영상 파일: {os.path.basename(video_path)}")
     print(f"  📌 유튜브 제목: {meta['title']}")
     print("==================================================================")
 
     youtube = build_service()
+
+    status_dict = {
+        "privacyStatus": actual_privacy
+    }
+    if publish_at_iso:
+        # YouTube API 규칙: publishAt이 지정되면 privacyStatus는 반드시 'private'이어야 함
+        status_dict["publishAt"] = publish_at_iso
+        status_dict["privacyStatus"] = "private"
 
     body = {
         "snippet": {
@@ -214,9 +264,7 @@ def upload_masterpiece_video(video_path: str, script_path: str, privacy: str = "
             "tags": meta["tags"],
             "categoryId": CATEGORY_EDUCATION
         },
-        "status": {
-            "privacyStatus": privacy
-        }
+        "status": status_dict
     }
 
     media = MediaFileUpload(video_path, mimetype="video/mp4", resumable=True)
@@ -235,7 +283,9 @@ def upload_masterpiece_video(video_path: str, script_path: str, privacy: str = "
         "video_url": video_url,
         "uploaded_at": datetime.now().isoformat(),
         "title": meta["title"],
-        "privacy": privacy
+        "privacy": actual_privacy,
+        "publish_at": publish_at_iso,
+        "schedule_info": schedule_info
     }
     with open(info_path, "w", encoding="utf-8") as f:
         json.dump(upload_info, f, ensure_ascii=False, indent=2)

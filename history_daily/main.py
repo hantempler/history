@@ -21,8 +21,9 @@ def main():
             'upload_option',
             message="유튜브 자동 업로드를 진행하시겠습니까?",
             choices=[
-                '업로드 (비공개 private 모드 - 스튜디오 확인 권장)',
-                '업로드 (공개 public 모드)',
+                '업로드 (오전 7시 예약 공개 - 기본 권장)',
+                '업로드 (비공개 private 모드 - 스튜디오 확인)',
+                '업로드 (즉시 공개 public 모드)',
                 '업로드 안 함 (로컬 렌더링만 수행)'
             ],
         )
@@ -42,10 +43,12 @@ def main():
         target_date = date_a['custom_date'].strip()
 
     upload = True
-    privacy = "private"
+    privacy = "scheduled"
     if '안 함' in answers['upload_option']:
         upload = False
-    elif '공개' in answers['upload_option']:
+    elif '비공개' in answers['upload_option']:
+        privacy = "private"
+    elif '즉시 공개' in answers['upload_option']:
         privacy = "public"
 
     run_pipeline(target_date, upload=upload, privacy=privacy)

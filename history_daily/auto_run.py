@@ -23,7 +23,7 @@ from src.config import get_daily_dir, CONFIG_DIR
 KST = timezone(timedelta(hours=9))
 
 
-def run_pipeline(target_date_str=None, upload=True, privacy="private", edition="all"):
+def run_pipeline(target_date_str=None, upload=True, privacy="scheduled", edition="all"):
     start_time = time.time()
 
     if not target_date_str:
@@ -82,9 +82,9 @@ def run_pipeline(target_date_str=None, upload=True, privacy="private", edition="
 
             if upload:
                 if os.path.exists(token_path):
-                    print("\n  [KO-Step 6] 한국어 YouTube Shorts 자동 업로드 연동 중...")
+                    print("\n  [KO-Step 6] 한국어 YouTube Shorts 자동 업로드 연동 중 (오전 7시 예약 공개)...")
                     from src.uploader import upload_masterpiece_video
-                    upload_masterpiece_video(final_ko_video, ko_script_path, privacy=privacy, edition="history")
+                    upload_masterpiece_video(final_ko_video, ko_script_path, privacy=privacy, target_date_str=clean_date, schedule_hour=7, edition="history")
                 else:
                     print(f"\n  [KO-Step 6] YouTube 토큰 파일이 없어 한국어 업로드를 건너뜁니다.")
         except Exception as e:
@@ -147,7 +147,7 @@ def main():
     parser.add_argument("--edition", type=str, default="all", choices=["all", "history", "history_en"], help="실행할 에디션 (all, history, history_en)")
     parser.add_argument("--upload", dest="upload", action="store_true", default=True, help="유튜브 자동 업로드 실행 (기본값: True)")
     parser.add_argument("--no-upload", dest="upload", action="store_false", help="유튜브 자동 업로드 건너뛰기")
-    parser.add_argument("--privacy", type=str, default="private", choices=["private", "unlisted", "public"], help="유튜브 공개 상태 (기본값: private)")
+    parser.add_argument("--privacy", type=str, default="scheduled", choices=["scheduled", "private", "unlisted", "public"], help="유튜브 공개 상태 (기본값: scheduled - 오전 7시 예약 공개)")
     args = parser.parse_args()
 
     target = args.opt_date or args.date
