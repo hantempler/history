@@ -362,18 +362,12 @@ def generate_killer_script(target_date=None, edition="history", base_script_data
     for sc in script_data.get("scenes", []):
         sc["script"] = clean_narration_text(sc.get("script", ""))
 
-    # BGM 다양성 보장 (날짜별 고유 BGM 검증)
-    bgm_candidates = [
-        "impact_prelude.mp3", "darkness_is_coming.mp3", "aces_high.mp3",
-        "ancient_rite.mp3", "clash_defiant.mp3", "this_house.mp3", "cryptic_sorrow.mp3"
-    ]
+    # BGM 다양성 보장 (37곡 무드 기반 날짜별 스마트 순환 로테이션)
+    from src.bgm_selector import select_rotated_bgm
     cur_bgm = script_data.get("bgm", "")
-    if cur_bgm not in bgm_candidates:
-        try:
-            dt_obj = datetime.strptime(clean_date, "%Y%m%d")
-            script_data["bgm"] = bgm_candidates[dt_obj.weekday() % len(bgm_candidates)]
-        except Exception:
-            script_data["bgm"] = bgm_candidates[0]
+    rotated_bgm = select_rotated_bgm(cur_bgm, clean_date)
+    script_data["bgm"] = rotated_bgm
+    print(f"  🎵 [BGM 스마트 로테이션] AI 무드('{cur_bgm}') ➔ 날짜 순환 음원 확정: '{rotated_bgm}'")
 
     # 한국어 전용 디렉토리 및 공통 루트에 저장
     ko_dir = get_daily_dir(clean_date, edition="history")

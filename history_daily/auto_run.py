@@ -93,42 +93,43 @@ def run_pipeline(target_date_str=None, upload=True, privacy="private", edition="
                 raise e
 
     # ────────────────────────────────────────────────────────────────
-    # [에디션 2] 글로벌 영문 쇼츠 파이프라인 (history_en)
+    # [에디션 2] 글로벌 영문 쇼츠 파이프라인 (history_en) - 임시 비활성화 (주석 처리)
+    # (추후 글로벌 영문 쇼츠 재개 시 아래 주석을 해제하여 사용 가능)
     # ────────────────────────────────────────────────────────────────
-    if edition in ("all", "history_en"):
-        print("\n" + "="*66)
-        print("🌐 [글로벌 영문 에디션 (history_en) 제작 시작]")
-        print("="*66)
-        try:
-            if "history" in results and upload:
-                print("  ⏳ [안전 버퍼] 동시 업로드 충돌 방지를 위해 5초간 대기합니다...")
-                time.sleep(5)
-
-            en_dir = get_daily_dir(clean_date, edition="history_en")
-
-            print("\n  [EN-Step 2] 동일 6씬 기반 BBC/Netflix 다큐멘터리 급 네이티브 영문 대본 집필 중...")
-            en_script_path = generate_killer_script(clean_date, edition="history_en", base_script_data=updated_script_data)
-            with open(en_script_path, "r", encoding="utf-8") as f:
-                en_script_data = json.load(f)
-
-            print("\n  [EN-Step 4] 글로벌 Google Cloud Neural2 (en-US-Neural2-J) 영문 음성 합성 중...")
-            generate_scene_audios(en_script_data, en_dir, edition="history_en")
-
-            print("\n  [EN-Step 5] 영문 OCTOBER 헤더, 네이티브 다이내믹 자막 및 시네마틱 렌더링 중...")
-            final_en_video = render_masterpiece_from_script(en_dir, lang="en")
-            results["history_en"] = final_en_video
-
-            if upload:
-                if os.path.exists(token_path):
-                    print("\n  [EN-Step 6] 글로벌 YouTube Shorts (defaultLanguage: en) 자동 업로드 연동 중...")
-                    from src.uploader import upload_masterpiece_video
-                    upload_masterpiece_video(final_en_video, en_script_path, privacy=privacy, edition="history_en")
-                else:
-                    print(f"\n  [EN-Step 6] YouTube 토큰 파일이 없어 영문 업로드를 건너뜁니다.")
-        except Exception as e:
-            print(f"⚠️ [history_en] 영문판 처리 중 오류 발생 (한국어 산출물은 100% 안전 보존): {e}")
-            if edition == "history_en":
-                raise e
+    # if edition in ("all", "history_en"):
+    #     print("\n" + "="*66)
+    #     print("🌐 [글로벌 영문 에디션 (history_en) 제작 시작]")
+    #     print("="*66)
+    #     try:
+    #         if "history" in results and upload:
+    #             print("  ⏳ [안전 버퍼] 동시 업로드 충돌 방지를 위해 5초간 대기합니다...")
+    #             time.sleep(5)
+    #
+    #         en_dir = get_daily_dir(clean_date, edition="history_en")
+    #
+    #         print("\n  [EN-Step 2] 동일 6씬 기반 BBC/Netflix 다큐멘터리 급 네이티브 영문 대본 집필 중...")
+    #         en_script_path = generate_killer_script(clean_date, edition="history_en", base_script_data=updated_script_data)
+    #         with open(en_script_path, "r", encoding="utf-8") as f:
+    #             en_script_data = json.load(f)
+    #
+    #         print("\n  [EN-Step 4] 글로벌 Google Cloud Neural2 (en-US-Neural2-J) 영문 음성 합성 중...")
+    #         generate_scene_audios(en_script_data, en_dir, edition="history_en")
+    #
+    #         print("\n  [EN-Step 5] 영문 OCTOBER 헤더, 네이티브 다이내믹 자막 및 시네마틱 렌더링 중...")
+    #         final_en_video = render_masterpiece_from_script(en_dir, lang="en")
+    #         results["history_en"] = final_en_video
+    #
+    #         if upload:
+    #             if os.path.exists(token_path):
+    #                 print("\n  [EN-Step 6] 글로벌 YouTube Shorts (defaultLanguage: en) 자동 업로드 연동 중...")
+    #                 from src.uploader import upload_masterpiece_video
+    #                 upload_masterpiece_video(final_en_video, en_script_path, privacy=privacy, edition="history_en")
+    #             else:
+    #                 print(f"\n  [EN-Step 6] YouTube 토큰 파일이 없어 영문 업로드를 건너뜁니다.")
+    #     except Exception as e:
+    #         print(f"⚠️ [history_en] 영문판 처리 중 오류 발생 (한국어 산출물은 100% 안전 보존): {e}")
+    #         if edition == "history_en":
+    #             raise e
 
     elapsed = time.time() - start_time
     print("\n" + "==================================================================")

@@ -253,9 +253,50 @@ def draw_body_minimal_header(draw, corner_name, event_date_title):
     return current_y + th
 
 # -------------------------------------------------------------
-# 3. 자막 청크 분할 (외톨이 단어 원천 차단)
+# 3. 자막 가독성 정규화 및 청크 분할 (외톨이 단어 원천 차단)
 # -------------------------------------------------------------
+def normalize_korean_numbers_in_script(text: str) -> str:
+    """자막 가독성을 위해 '십일월 이일' 등의 한글 날짜 음독을 '11월 2일' 아라비아 숫자로 정규화"""
+    if not text:
+        return text
+
+    month_map = {
+        "일월": "1월", "이월": "2월", "삼월": "3월", "사월": "4월", "오월": "5월", "유월": "6월",
+        "칠월": "7월", "팔월": "8월", "구월": "9월", "시월": "10월", "십일월": "11월", "십이월": "12월"
+    }
+
+    day_map = {
+        "일일": "1일", "이일": "2일", "삼일": "3일", "사일": "4일", "오일": "5일", "육일": "6일",
+        "칠일": "7일", "팔일": "8일", "구일": "9일", "십일": "10일",
+        "십일일": "11일", "십이일": "12일", "십삼일": "13일", "십사일": "14일", "십오일": "15일",
+        "십육일": "16일", "십칠일": "17일", "십팔일": "18일", "십구일": "19일", "이십일": "20일",
+        "이십일일": "21일", "이십이일": "22일", "이십삼일": "23일", "이십사일": "24일", "이십오일": "25일",
+        "이십육일": "26일", "이십칠일": "27일", "이십팔일": "28일", "이십구일": "29일", "삼십일": "30일",
+        "삼십일일": "31일"
+    }
+
+    for m_kr in sorted(month_map.keys(), key=len, reverse=True):
+        m_num = month_map[m_kr]
+        for d_kr in sorted(day_map.keys(), key=len, reverse=True):
+            d_num = day_map[d_kr]
+            pattern = re.compile(rf'\b{m_kr}\s+{d_kr}\b')
+            text = pattern.sub(f"{m_num} {d_num}", text)
+
+    for m_kr in sorted(month_map.keys(), key=len, reverse=True):
+        m_num = month_map[m_kr]
+        pattern = re.compile(rf'(?<![가-힣]){m_kr}(?![가-힣])')
+        text = pattern.sub(m_num, text)
+
+    for d_kr in sorted(day_map.keys(), key=len, reverse=True):
+        d_num = day_map[d_kr]
+        pattern = re.compile(rf'(\d+월\s*){d_kr}\b')
+        text = pattern.sub(rf'\g<1>{d_num}', text)
+
+    return text
+
+
 def chunk_text_smart(text, max_length=12):
+    text = normalize_korean_numbers_in_script(text)
     text = (text or "").replace('\n', ' ').strip()
     if not text:
         return []

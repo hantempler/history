@@ -83,6 +83,13 @@ WEEKDAY_PRESETS: Dict[int, Dict[str, Any]] = {
         "speaking_rate": 0.98,
         "pitch": -0.5,
         "bgm": "bgm_history_epic.mp3",
+        "bgm_list": [
+            "bgm_history_epic.mp3",
+            "impact_prelude.mp3",
+            "stormfront.mp3",
+            "five_armies.mp3",
+            "final_battle_of_the_dark_wizards.mp3"
+        ],
         "color": (229, 169, 60),      # 샴페인 골드
         "category": "세계사 결정적 순간",
         "source_type": "wiki_deepdive"
@@ -94,6 +101,13 @@ WEEKDAY_PRESETS: Dict[int, Dict[str, Any]] = {
         "speaking_rate": 1.02,
         "pitch": -0.8,
         "bgm": "this_house.mp3",
+        "bgm_list": [
+            "this_house.mp3",
+            "ghost_story.mp3",
+            "unanswered_questions.mp3",
+            "darkling.mp3",
+            "division.mp3"
+        ],
         "color": (138, 79, 255),      # 딥 바이올렛
         "category": "역사 미스터리 파일",
         "source_type": "wiki_mystery"
@@ -105,6 +119,13 @@ WEEKDAY_PRESETS: Dict[int, Dict[str, Any]] = {
         "speaking_rate": 1.04,
         "pitch": 0.0,
         "bgm": "ancient_rite.mp3",
+        "bgm_list": [
+            "ancient_rite.mp3",
+            "hidden_agenda.mp3",
+            "interloper.mp3",
+            "achaidh_cheide.mp3",
+            "gathering_darkness.mp3"
+        ],
         "color": (46, 204, 113),       # 단청 비취 그린
         "category": "조선왕조 비밀기록",
         "source_type": "sillok_db"
@@ -116,6 +137,13 @@ WEEKDAY_PRESETS: Dict[int, Dict[str, Any]] = {
         "speaking_rate": 1.00,
         "pitch": -0.2,
         "bgm": "impact_prelude.mp3",
+        "bgm_list": [
+            "impact_prelude.mp3",
+            "clash_defiant.mp3",
+            "volatile_reaction.mp3",
+            "killers.mp3",
+            "devastation_and_revenge.mp3"
+        ],
         "color": (231, 76, 60),       # 카민 레드
         "category": "전술과 결전의 역사",
         "source_type": "wiki_military"
@@ -127,6 +155,13 @@ WEEKDAY_PRESETS: Dict[int, Dict[str, Any]] = {
         "speaking_rate": 0.98,
         "pitch": 0.0,
         "bgm": "darkness_is_coming.mp3",
+        "bgm_list": [
+            "darkness_is_coming.mp3",
+            "the_descent.mp3",
+            "night_of_chaos.mp3",
+            "hero_down.mp3",
+            "minima.mp3"
+        ],
         "color": (243, 156, 18),       # 웜 앰버
         "category": "인물 60초 열전",
         "source_type": "wiki_figure"
@@ -138,6 +173,13 @@ WEEKDAY_PRESETS: Dict[int, Dict[str, Any]] = {
         "speaking_rate": 1.08,
         "pitch": 0.2,
         "bgm": "clash_defiant.mp3",
+        "bgm_list": [
+            "clash_defiant.mp3",
+            "despair_and_triumph.mp3",
+            "reign_supreme.mp3",
+            "aces_high.mp3",
+            "call_to_adventure.mp3"
+        ],
         "color": (52, 152, 219),       # 일렉트릭 블루
         "category": "역사 세기의 라이벌",
         "source_type": "wiki_vs"
@@ -149,6 +191,13 @@ WEEKDAY_PRESETS: Dict[int, Dict[str, Any]] = {
         "speaking_rate": 1.04,
         "pitch": 0.0,
         "bgm": "cryptic_sorrow.mp3",
+        "bgm_list": [
+            "cryptic_sorrow.mp3",
+            "heartbreaking.mp3",
+            "at_rest.mp3",
+            "night_vigil.mp3",
+            "anguish.mp3"
+        ],
         "color": (149, 165, 166),      # 네오 실버
         "category": "시국 평행이론",
         "source_type": "sillok_parallel"
@@ -277,7 +326,12 @@ def collect_wikipedia_themed_events(month_str: str, day_str: str, source_type: s
 def route_daily_content(target_date_str: str) -> Dict[str, Any]:
     dt = datetime.strptime(target_date_str, "%Y-%m-%d")
     weekday = dt.weekday()
-    preset = WEEKDAY_PRESETS[weekday]
+    preset = dict(WEEKDAY_PRESETS[weekday])
+
+    # 날짜 기반 BGM 자동 순환 (Round-Robin) 로테이션
+    bgm_candidates = preset.get("bgm_list", [preset.get("bgm")])
+    rot_idx = (dt.month * 31 + dt.day) % len(bgm_candidates)
+    preset["bgm"] = bgm_candidates[rot_idx]
 
     month_str = f"{dt.month:02d}"
     day_str = f"{dt.day:02d}"
@@ -287,7 +341,7 @@ def route_daily_content(target_date_str: str) -> Dict[str, Any]:
     print(f"🧭 [요일 소스 라우터 가동] {target_date_str} ({dt.strftime('%A')}, {weekday})")
     print(f"  📌 편성 코너: [{preset['corner']}] - {preset['theme']}")
     print(f"  🎙️ 배정 성우: {preset['voice']} (속도: {preset['speaking_rate']}x, 피치: {preset['pitch']})")
-    print(f"  🎵 지정 BGM: {preset['bgm']}")
+    print(f"  🎵 지정 BGM: {preset['bgm']} (후보 {len(bgm_candidates)}곡 중 순환 선택)")
     print("==================================================================")
 
     events = []

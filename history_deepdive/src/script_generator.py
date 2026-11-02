@@ -20,14 +20,56 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = CRED_PATH
 from src.config import GCP_PROJECT_ID, GCP_LOCATION
 
 
+def normalize_korean_numbers_in_script(text: str) -> str:
+    """자막 가독성을 위해 '십일월 이일' 등의 한글 날짜 음독을 '11월 2일' 아라비아 숫자로 정규화"""
+    if not text:
+        return text
+
+    month_map = {
+        "일월": "1월", "이월": "2월", "삼월": "3월", "사월": "4월", "오월": "5월", "유월": "6월",
+        "칠월": "7월", "팔월": "8월", "구월": "9월", "시월": "10월", "십일월": "11월", "십이월": "12월"
+    }
+
+    day_map = {
+        "일일": "1일", "이일": "2일", "삼일": "3일", "사일": "4일", "오일": "5일", "육일": "6일",
+        "칠일": "7일", "팔일": "8일", "구일": "9일", "십일": "10일",
+        "십일일": "11일", "십이일": "12일", "십삼일": "13일", "십사일": "14일", "십오일": "15일",
+        "십육일": "16일", "십칠일": "17일", "십팔일": "18일", "십구일": "19일", "이십일": "20일",
+        "이십일일": "21일", "이십이일": "22일", "이십삼일": "23일", "이십사일": "24일", "이십오일": "25일",
+        "이십육일": "26일", "이십칠일": "27일", "이십팔일": "28일", "이십구일": "29일", "삼십일": "30일",
+        "삼십일일": "31일"
+    }
+
+    for m_kr in sorted(month_map.keys(), key=len, reverse=True):
+        m_num = month_map[m_kr]
+        for d_kr in sorted(day_map.keys(), key=len, reverse=True):
+            d_num = day_map[d_kr]
+            pattern = re.compile(rf'\b{m_kr}\s+{d_kr}\b')
+            text = pattern.sub(f"{m_num} {d_num}", text)
+
+    for m_kr in sorted(month_map.keys(), key=len, reverse=True):
+        m_num = month_map[m_kr]
+        pattern = re.compile(rf'(?<![가-힣]){m_kr}(?![가-힣])')
+        text = pattern.sub(m_num, text)
+
+    for d_kr in sorted(day_map.keys(), key=len, reverse=True):
+        d_num = day_map[d_kr]
+        pattern = re.compile(rf'(\d+월\s*){d_kr}\b')
+        text = pattern.sub(rf'\g<1>{d_num}', text)
+
+    return text
+
+
 def clean_narration_text(text: str) -> str:
-    """TTS 및 자막 불일치를 막기 위해 괄호, 한자 표기, 특수문자 등을 정제"""
+    """TTS 및 자막 불일치를 막기 위해 괄호, 한자 표기, 특수문자 등을 정제하고 날짜 숫자를 정규화"""
     # 괄호 및 괄호 안 내용 제거 (예: (史臣曰) -> 사관은 말했다)
     text = re.sub(r'\(.*?\)', '', text)
     text = re.sub(r'\[.*?\]', '', text)
     # 불필요한 따옴표나 특수문자 정리
     text = re.sub(r'["\'`“”‘’]', '', text)
     text = re.sub(r'\s+', ' ', text).strip()
+    # 한글 음독 날짜(예: 십일월 이일) -> 아라비아 숫자 표준(11월 2일) 복원
+    text = normalize_korean_numbers_in_script(text)
     return text
 
 
@@ -144,7 +186,7 @@ def generate_masterpiece_script(routed_data: dict, out_dir: str) -> dict:
 1080x1920 마스터피스 표준 5개 씬 다큐멘터리 대본을 완전히 새로 작성하세요.
 
 [씬별 구성 가이드]
-- 씬 1: [도입] 오늘 날짜({month_day_kr})를 밝히며, 그날 궁궐과 어전을 뒤흔든 충격적 사건에 대한 질문을 던지세요.
+- 씬 1: [도입] 그날 궁궐과 어전을 뒤흔든 충격적 사건에 대한 질문을 던지세요. (날짜/연도 언급 시 반드시 '{month_day_kr}'처럼 아라비아 숫자로 표기)
 - 씬 2: [전개] 사건의 배경과 궁궐의 긴장된 상황을 사실에 입각하여 묘사하세요.
 - 씬 3: [위기] 왕의 결단이나 신하들의 격렬한 대립, 피할 수 없는 결정적 순간을 그리세요.
 - 씬 4: [반전/사관의 직필] 목숨을 걸고 역사에 기록을 남긴 사관의 평가(史臣曰)를 직접 인용하여 숨겨진 진실을 폭로하세요.
@@ -164,7 +206,7 @@ def generate_masterpiece_script(routed_data: dict, out_dir: str) -> dict:
 1080x1920 마스터피스 표준 5개 씬 대본을 작성하세요.
 
 [씬별 구성 가이드]
-- 씬 1: [도입] 오늘 날짜({month_day_kr})를 언급하며 시청자를 단숨에 몰입시키는 충격적 질문 제시.
+- 씬 1: [도입] 첫 2초 만에 시청자를 사로잡는 질문형 훅으로 사건 발단을 제시하세요. (날짜/연도 언급 시 반드시 '{month_day_kr}'처럼 아라비아 숫자로 표기)
 - 씬 2: [발단] 그날 일어난 사건의 구체적 배경과 긴박한 정황.
 - 씬 3: [절정] 승패가 갈린 결전, 충격적 비극, 혹은 전술의 충돌 순간.
 - 씬 4: [반전/기록] 역사적 사료와 목격자의 증언, 혹은 사건 뒤에 숨겨진 비밀 폭로.
@@ -180,7 +222,8 @@ def generate_masterpiece_script(routed_data: dict, out_dir: str) -> dict:
 [공통 필수 작성 원칙]
 1. TTS 음성과 자막 텍스트 100% 일치:
    - 각 씬의 `script` 텍스트가 그대로 성우의 목소리로 합성되고 화면 자막으로 출력됩니다.
-   - 괄호, 지시문, 해설, 특수문자, 한자를 일체 쓰지 마십시오. 오직 성우가 입으로 읽을 수 있는 한글 구어체만 출력하십시오.
+   - 괄호, 지시문, 해설, 한자를 일체 쓰지 마십시오. 성우가 낭독할 정제되고 깊이 있는 나레이션으로 작성하십시오.
+   - [CRITICAL: 숫자 및 날짜 표준 표기] 연도, 날짜, 수치(예: {month_day_kr}, 1914년, 3만 명)는 시청자 자막 가독성을 위해 반드시 아라비아 숫자로 표기하십시오. '십일월 이일', '천구백십사년'처럼 한글 음독으로 풀어서 적지 마십시오. (Google Cloud TTS 엔진이 아라비아 숫자를 한국어로 완벽하게 발음합니다)
    - 각 씬은 호흡이 가쁘지 않은 2~3문장(약 10~12초 분량)이어야 합니다.
 2. `image_search_keyword`:
    - 위키미디어 고화질 사료를 찾기 위한 정확한 인물/사건 중심 영문 검색 키워드(2~4단어)를 제시하십시오.
@@ -326,6 +369,7 @@ def generate_masterpiece_script(routed_data: dict, out_dir: str) -> dict:
    - 긴장감과 몰입감은 유지하되, 역사적 왜곡이나 단정적 오해를 부르는 문장은 객관적이고 서늘한 다큐멘터리 어조로 정제하십시오.
 3. 씬별 자막/음성 일치 및 스키마 유지:
    - 교정된 대본의 JSON 스키마(corner_name, category, event_title, hook_question, why_today_title, why_today_desc, bgm, scenes 내부 필드)를 100% 동일하게 유지하십시오.
+   - [숫자 및 날짜 표준 표기 준수] 연도, 날짜, 수치는 반드시 아라비아 숫자(예: 11월 2일, 1914년, 30만) 표기를 유지하십시오. 한글 음독('십일월 이일', '천구백십사년' 등)으로 변환하지 마십시오.
 4. 출력 형식:
    - 반드시 아래의 정확한 JSON 구조로만 출력하십시오. 마크다운 백틱 없이 순수 JSON만 반환하십시오.
 
@@ -409,7 +453,12 @@ def generate_masterpiece_script(routed_data: dict, out_dir: str) -> dict:
 
     # 후처리: TTS 및 자막 무결성 확보
     script_data["corner_name"] = corner
-    script_data["bgm"] = bgm
+    # BGM 다양성 보장 (37곡 무드 기반 날짜별 스마트 순환 로테이션)
+    from src.bgm_selector import select_rotated_bgm
+    chosen_bgm = script_data.get("bgm") or bgm
+    rotated_bgm = select_rotated_bgm(chosen_bgm, target_date)
+    script_data["bgm"] = rotated_bgm
+    print(f"  🎵 [BGM 스마트 로테이션] 사건 무드('{chosen_bgm}') ➔ 날짜 순환 음원 확정: '{rotated_bgm}'")
     for sc in script_data.get("scenes", []):
         sc["script"] = clean_narration_text(sc.get("script", ""))
 
