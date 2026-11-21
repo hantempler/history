@@ -82,9 +82,9 @@ def run_pipeline(target_date_str=None, upload=True, privacy="scheduled", edition
 
             if upload:
                 if os.path.exists(token_path):
-                    print("\n  [KO-Step 6] 한국어 YouTube Shorts 자동 업로드 연동 중 (오전 7시 예약 공개)...")
+                    print("\n  [KO-Step 6] 한국어 YouTube Shorts 자동 업로드 연동 중 (오후 7시 예약 공개)...")
                     from src.uploader import upload_masterpiece_video
-                    upload_masterpiece_video(final_ko_video, ko_script_path, privacy=privacy, target_date_str=clean_date, schedule_hour=7, edition="history")
+                    upload_masterpiece_video(final_ko_video, ko_script_path, privacy=privacy, target_date_str=clean_date, schedule_hour=19, edition="history")
                 else:
                     print(f"\n  [KO-Step 6] YouTube 토큰 파일이 없어 한국어 업로드를 건너뜁니다.")
         except Exception as e:

@@ -26,6 +26,181 @@ except ImportError:
 
 
 # ---------------------------------------------------------------------------
+# 0. 한글 발음 표기 -> 아라비아 숫자/날짜 표기 100% 보존 변환 (Starisborn 엔진 이식)
+# ---------------------------------------------------------------------------
+STOP_ENDINGS = (
+    "습니다", "었습니다", "았습니다", "였습니다", "있었습니다", "없었습니다",
+    "뿐이었습니다", "뿐이었다", "돌았지만", "했지만", "였지만", "이라며", "라며",
+    "에게", "에서", "으로", "까지", "부터", "하고", "되고", "하며", "합니다",
+    "입니다", "립니다", "칩니다", "옵니다", "냅니다", "봅니다", "줍니다", "겪습니다",
+    "됩니다", "했습니다", "당했습니다", "받았습니다", "밝혀집니다", "드러납니다", "시작됩니다",
+    "끝납니다", "벌어집니다", "넘어갑니다", "이어집니다", "남겼습니다", "나섭니다"
+)
+
+
+def is_stop_word(word: str) -> bool:
+    """서술어, 종결어미, 조사 등 하이라이트 배제 대상 판별."""
+    clean = re.sub(r'[,.!?\'"“”~]', '', word).strip()
+    if len(clean) < 2:
+        return True
+    if any(clean.endswith(se) for se in STOP_ENDINGS):
+        return True
+    # 한국어 서술어 종결어미 정규식 (습니다, ㅂ니다, 합니다, 됩니다, 였다, 했다 등)
+    if re.search(r'(습니다|ㅂ니다|합니다|됩니다|입니다|였다|했다|됐다|었다|았다|있었다|없었다|이었죠|였죠|했죠|됐죠|있었죠|없었죠|일까요|을까요|했나요|인가요)$', clean):
+        return True
+    return False
+
+
+def format_sub_display(text: str) -> str:
+    """내레이션 전문의 한글 발음 표기를 화면 자막용 아라비아 숫자/날짜/단위 표기로 100% 정규화 변환."""
+    if not text:
+        return ""
+
+    t = text
+
+    sino_map = {
+        '영': 0, '공': 0, '일': 1, '이': 2, '삼': 3, '사': 4,
+        '오': 5, '육': 6, '칠': 7, '팔': 8, '구': 9
+    }
+
+    def parse_sino(s):
+        val = 0
+        cur = 0
+        for ch in s:
+            if ch in sino_map:
+                cur = sino_map[ch]
+            elif ch == '십':
+                val += (cur if cur != 0 else 1) * 10
+                cur = 0
+            elif ch == '백':
+                val += (cur if cur != 0 else 1) * 100
+                cur = 0
+            elif ch == '천':
+                val += (cur if cur != 0 else 1) * 1000
+                cur = 0
+        return val + cur
+
+    native_tens = {'스물': 20, '서른': 30, '마흔': 40, '쉰': 50, '예순': 60, '일흔': 70, '여든': 80, '아흔': 90}
+    native_ones = {'하나': 1, '한': 1, '둘': 2, '두': 2, '셋': 3, '세': 3, '넷': 4, '네': 4, '다섯': 5, '여섯': 6, '일곱': 7, '여덟': 8, '아홉': 9, '열': 10}
+
+    def parse_native(s):
+        val = 0
+        rem = s
+        if rem.startswith('열') and len(rem) > 1:
+            val += 10
+            rem = rem[1:]
+        else:
+            for k, v in native_tens.items():
+                if rem.startswith(k):
+                    val += v
+                    rem = rem[len(k):]
+                    break
+        for k, v in native_ones.items():
+            if rem == k:
+                val += v
+                rem = ''
+                break
+        if rem == '' and val > 0:
+            return val
+        return None
+
+    def repl_digit_year(m):
+        digits = "".join(str(sino_map[ch]) for ch in m.group(1))
+        val = int(digits)
+        if 1000 <= val <= 2099:
+            return f"{val}년"
+        return m.group(0)
+
+    def repl_year(m):
+        full = m.group(1)
+        try:
+            val = parse_sino(full)
+            if 1000 <= val <= 2099:
+                return f"{val}년"
+        except Exception:
+            pass
+        return m.group(0)
+
+    # 1-1. 연도: 4자리 연속 숫자음 (일구구육년 -> 1996년, 일구팔삼년 -> 1983년)
+    t = re.sub(r'(?<![가-힣])([영공일이삼사오육칠팔구]{4})년', repl_digit_year, t)
+
+    # 1-2. 연도: 자릿수 결합 (천구백구십육년 -> 1996년, 이천이십육년 -> 2026년)
+    t = re.sub(r'((?:천[팔구]백|이천)[영공일이삼사오육칠팔구십백천]*)년', repl_year, t)
+
+    # 2. 월: 시월, 유월, 십월 등
+    month_map = {
+        '일월': '1월', '이월': '2월', '삼월': '3월', '사월': '4월',
+        '오월': '5월', '유월': '6월', '칠월': '7월', '팔월': '8월',
+        '구월': '9월', '시월': '10월', '십월': '10월',
+        '십일월': '11월', '십이월': '12월'
+    }
+    for k, v in month_map.items():
+        t = re.sub(rf'(?<![가-힣]){k}', v, t)
+
+    # 3. 일: 1일 ~ 31일 (날짜 맥락 한정: 조사, 공백, 문장부호 또는 문자열 끝)
+    def repl_day(m):
+        full = m.group(1)
+        try:
+            val = parse_sino(full)
+            if 1 <= val <= 31:
+                return f"{val}일"
+        except Exception:
+            pass
+        return m.group(0)
+
+    t = re.sub(r'(?<![가-힣])([일이삼사오육칠팔구십]+)일(?=[\s,.\'\"~-]|$|부터|까지|에|은|는|이|가|도|로|만|간)', repl_day, t)
+
+    # 4. 일반 수사 + 단위 결합 (달러, 원, 명, 개, 분, 초, 시간, %, 퍼센트, 척, 등, 위, 배, 대)
+    unit_pattern = r'(?<![가-힣])([일이삼사오육칠팔구십백천]+)\s*(달러|원|엔|위안|파운드|분|초|시간|퍼센트|%|프로|도|살|세|명|개|장|권|척|곡|편|회|등|위|점|배|대|병|잔|골|승|패)'
+    def repl_unit(m):
+        full = m.group(1)
+        unit = m.group(2)
+        try:
+            val = parse_sino(full)
+            if val > 0:
+                if unit in ['퍼센트', '프로']:
+                    return f"{val}%"
+                return f"{val}{unit}"
+        except Exception:
+            pass
+        return m.group(0)
+
+    t = re.sub(unit_pattern, repl_unit, t)
+
+    # 5. 고유어 수사 + 단위 (스물다섯 살, 세 명, 두 개 등)
+    def repl_native_unit(m):
+        word = m.group(0).strip()
+        unit = m.group(2)
+        num_part = word[:-len(unit)].strip()
+        val = parse_native(num_part)
+        if val is not None:
+            return f"{val}{unit}"
+        return m.group(0)
+
+    t = re.sub(r'(?<![가-힣])([스서마쉰예일여아열한두세네다여일여아][가-힣]*?)\s*(살|세|명|개|장|권|척|곡|편|회|대|병|잔|골|점)', repl_native_unit, t)
+
+    # 6. 큰 수 단위 (오만 명 -> 5만 명, 백만 -> 100만, 오백 달러 -> 500달러)
+    def repl_man(m):
+        num_str = m.group(1)
+        val = parse_sino(num_str)
+        unit_trail = m.group(2) or ''
+        if val > 0:
+            return f"{val}만{unit_trail}"
+        return m.group(0)
+
+    t = re.sub(r'(?<![가-힣])([일이삼사오육칠팔구십]+)만(\s*명|\s*원|\s*달러|\s*장|\s*개|\s*뷰|\s*원)?', repl_man, t)
+    t = re.sub(r'(?<![가-힣])백만(\s*명|\s*원|\s*달러|\s*장|\s*개|\s*뷰)?', r'100만\1', t)
+    t = re.sub(r'(?<![가-힣])천만(\s*명|\s*원|\s*달러|\s*장|\s*개|\s*뷰)?', r'1,000만\1', t)
+    t = re.sub(r'(?<![가-힣])일억(\s*명|\s*원|\s*달러|\s*장|\s*개)?', r'1억\1', t)
+    t = re.sub(r'(?<![가-힣])십억(\s*명|\s*원|\s*달러|\s*장|\s*개)?', r'10억\1', t)
+    t = re.sub(r'(?<![가-힣])백억(\s*명|\s*원|\s*달러|\s*장|\s*개)?', r'100억\1', t)
+    t = re.sub(r'(?<![가-힣])천억(\s*명|\s*원|\s*달러|\s*장|\s*개)?', r'1,000억\1', t)
+    t = re.sub(r'(?<![가-힣])일조(\s*원|\s*달러)?', r'1조\1', t)
+
+    return t
+
+
+# ---------------------------------------------------------------------------
 # 1. FFmpeg 음성 시작 무음(Lead-in) 정밀 감지
 # ---------------------------------------------------------------------------
 def get_audio_voice_activity(audio_path, ffmpeg_bin="ffmpeg", min_silence_dur=0.18, silence_thresh_db=-28):
@@ -118,6 +293,11 @@ def rule_based_chunking(text, lang="ko"):
 # ---------------------------------------------------------------------------
 def analyze_dynamic_chunks(scenes, lang="ko", gcp_project_id=GCP_PROJECT_ID, gcp_location=GCP_LOCATION):
     """Gemini 2.5 Flash를 이용해 역사 쇼츠 최적화 호흡 단위 청크 및 킬러 키워드 하이라이트 추출."""
+    has_existing = all(bool(sc.get("chunks")) and isinstance(sc.get("chunks"), list) and len(sc.get("chunks")) > 0 for sc in scenes)
+    if has_existing:
+        print(f"  ✨ [Subtitle] 이미 대본에 분할된 자막 청크가 존재하여 즉시 재사용합니다 ({len(scenes)}씬).")
+        return [{"scene_number": sc.get("scene_number", sc.get("scene_no", idx+1)), "chunks": sc["chunks"]} for idx, sc in enumerate(scenes)]
+
     try:
         from google import genai
         from google.genai import types
@@ -284,30 +464,50 @@ def get_sub_font(size, font_path=FONT_MAIN):
 
 
 # ---------------------------------------------------------------------------
-# 5. 워드 레벨 키워드 하이라이트 글래스 플레이트(PNG) 렌더러
+# 5. 워드 레벨 키워드 하이라이트 다이내믹 자막 렌더러 (Starisborn 74pt 볼드 규격 1:1 이식)
 # ---------------------------------------------------------------------------
-def render_highlighted_subtitle_png(text, highlight_word, out_png, font_path=FONT_MAIN,
-                                    max_safe_w=920, default_fsize=58, highlight_color="#FFD700"):
+def render_highlighted_subtitle_png(text, highlight_word="", out_png="sub.png", font_path=FONT_MAIN,
+                                    max_safe_w=940, default_fsize=72, highlight_color="#FFE600",
+                                    highlight_keywords=None):
     """
-    스타이즈본의 옐로우/골드 키워드 하이라이트를 역사 숏폼 다크 플레이트에 결합하여,
-    키워드는 시인성 높은 골드(#FFD700), 일반 단어는 클린 화이트(#FFFCF4)로 워드 레벨 듀얼 컬러 렌더링.
-    상하단 패딩을 정밀 대칭(pad_y)으로 보정하여 위쪽 쏠림 현상을 완벽 제거.
+    스타이즈본의 상위 1% 유튜브 지식 쇼츠 표준 74pt 대형 볼드 타이포그래피 1:1 렌더러.
+    - 답답한 다크 글래스 박스/플레이트 전면 제거 (투명 배경 순수 타이포그래피)
+    - 74pt Gmarket Sans TTF Bold + 7.0px 블랙 외곽선 + 4.0px 드롭 섀도우
+    - 비비드 골드/네온 옐로우(#FFE600 / #FFD700) 키워드 하이라이트
+    - 한글 발음(천구백십사년, 오백 달러) -> 아라비아 숫자/기호(1914년, 500달러) 자동 변환
+    - 서술어/종결어미(습니다, 었습니다, 에게 등) 철저 배제 필터 탑재
     """
-    dummy_img = Image.new("RGBA", (1080, 400), (0, 0, 0, 0))
+    dummy_img = Image.new("RGBA", (1080, 500), (0, 0, 0, 0))
     dummy_draw = ImageDraw.Draw(dummy_img)
 
-    clean_text = text.strip()
-    highlight_clean = (highlight_word or "").strip()
+    # 1. 숫자/날짜 정규화 및 정제
+    clean_text = format_sub_display(text.strip())
 
-    # 폰트 크기 자동 조절 루프
+    # 하이라이트 키워드 결정 (1순위: 대본 지정 키워드 1:1 매칭, 2순위: 청크 키워드 + 서술어 철저 배제)
+    clean_kws = []
+    if highlight_keywords:
+        raw_list = [highlight_keywords] if isinstance(highlight_keywords, str) else list(highlight_keywords)
+        for kw in raw_list:
+            k_str = str(kw).strip(" .,?!'\"[]():;~")
+            if k_str:
+                clean_kws.append(k_str)
+                fmt_k = format_sub_display(k_str)
+                if fmt_k and fmt_k != k_str:
+                    clean_kws.append(fmt_k)
+    elif highlight_word:
+        k_str = str(highlight_word).strip(" .,?!'\"[]():;~")
+        if k_str and not is_stop_word(k_str):
+            clean_kws.append(k_str)
+            fmt_k = format_sub_display(k_str)
+            if fmt_k and fmt_k != k_str and not is_stop_word(fmt_k):
+                clean_kws.append(fmt_k)
+
+    # 2. 폰트 크기 자동 조절 (기본 72pt, 2줄 초과 또는 너비 초과 시 62pt까지 미세 축소)
     cur_fsize = default_fsize
-    font = get_sub_font(cur_fsize, font_path)
-
     words = clean_text.split()
-    # 2줄 초과 또는 너비 초과 시 폰트 축소
-    while cur_fsize > 44:
+
+    while cur_fsize > 58:
         font = get_sub_font(cur_fsize, font_path)
-        # 줄바꿈 시뮬레이션
         lines = []
         cur_l = []
         for w in words:
@@ -328,6 +528,8 @@ def render_highlighted_subtitle_png(text, highlight_word, out_png, font_path=FON
                 break
         cur_fsize -= 2
 
+    font = get_sub_font(cur_fsize, font_path)
+
     # 최종 라인 구성
     lines = []
     cur_l = []
@@ -342,9 +544,9 @@ def render_highlighted_subtitle_png(text, highlight_word, out_png, font_path=FON
     if cur_l:
         lines.append(cur_l)
 
-    line_step = cur_fsize + 18
+    line_step = cur_fsize + 20
 
-    # 텍스트 라인별 바운딩 박스 및 렌더링 메트릭 정밀 측정
+    # 3. 라인별 메트릭 측정
     line_metrics = []
     bbs = []
     for i, l_words in enumerate(lines):
@@ -357,59 +559,83 @@ def render_highlighted_subtitle_png(text, highlight_word, out_png, font_path=FON
     vis_top = min(b[1] for b in bbs)
     vis_bottom = max(b[3] for b in bbs)
     vis_h = vis_bottom - vis_top
-    vis_w = max(lw for _, lw in line_metrics)
-
-    pad_x = 42
-    pad_y = 22
 
     canvas_w = 1080
-    canvas_h = max(240, vis_h + 100)
+    canvas_h = max(260, vis_h + 60)
 
-    # 텍스트 시각적 중심을 캔버스 정중앙에 정확히 일치
     target_vis_top = (canvas_h - vis_h) // 2
     y_offset = target_vis_top - vis_top
 
-    # 플레이트 상/하 여백을 pad_y로 완전히 동일하게 보정 (상하 대칭 100%)
-    px0 = max(24, (canvas_w - vis_w) // 2 - pad_x)
-    px1 = min(canvas_w - 24, (canvas_w + vis_w) // 2 + pad_x)
-    py0 = max(8, target_vis_top - pad_y)
-    py1 = min(canvas_h - 8, target_vis_top + vis_h + pad_y)
-
+    # 투명 캔버스 (다크 글래스 박스 없음!)
     img = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
-
-    # 다크 라운드 글래스 플레이트 배경
-    plate = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
-    p_draw = ImageDraw.Draw(plate)
-    p_draw.rounded_rectangle([px0, py0, px1, py1], radius=24, fill=(8, 12, 18, 195))
-    plate = plate.filter(ImageFilter.GaussianBlur(radius=2))
-    img = Image.alpha_composite(img, plate)
-
-    # 텍스트 그리기 (워드 레벨 하이라이트 치환)
     draw = ImageDraw.Draw(img)
     space_w = dummy_draw.textbbox((0, 0), " ", font=font)[2] - dummy_draw.textbbox((0, 0), " ", font=font)[0]
 
-    for i, (l_words, lw) in enumerate(line_metrics):
-        x_cursor = (canvas_w - lw) // 2
-        y_cursor = y_offset + i * line_step
+    # 골드 하이라이트 컬러 파싱
+    if isinstance(highlight_color, str):
+        if highlight_color.startswith("#"):
+            hc = highlight_color.lstrip("#")
+            hl_rgba = tuple(int(hc[i:i+2], 16) for i in (0, 2, 4)) + (255,)
+        else:
+            hl_rgba = (255, 230, 0, 255)
+    else:
+        hl_rgba = highlight_color
 
-        for w_idx, word in enumerate(l_words):
-            clean_word = re.sub(r'[,.!?\'"“”]', '', word)
+    # 4. 2-Pass 렌더링: Pass 1 드롭 섀도우 (4.0px), Pass 2 본문 텍스트 (7.0px 블랙 스트로크)
+    for pass_mode in ("shadow", "main"):
+        for i, (l_words, lw) in enumerate(line_metrics):
+            x_cursor = (canvas_w - lw) // 2
+            y_cursor = y_offset + i * line_step
 
-            # 하이라이트 단어 일치 여부 판별
-            is_highlight = False
-            if highlight_clean:
-                if clean_word == highlight_clean or clean_word in highlight_clean or highlight_clean in clean_word:
-                    is_highlight = True
+            for w_idx, word in enumerate(l_words):
+                # 하이라이트 키워드 부분 일치 정밀 분할 (조사/어미 분리 렌더링)
+                clean_word = re.sub(r'[,.!?\'"“”~]', '', word)
+                matched_kw = None
+                for kw in clean_kws:
+                    if kw and kw in clean_word and not is_stop_word(kw):
+                        matched_kw = kw
+                        break
 
-            fill_color = highlight_color if is_highlight else (255, 252, 244, 255)
-            stroke_width = 5 if is_highlight else 4
+                if matched_kw:
+                    idx = word.find(matched_kw)
+                    if idx != -1:
+                        p1 = word[:idx]
+                        p_kw = word[idx:idx + len(matched_kw)]
+                        p2 = word[idx + len(matched_kw):]
+                        sub_parts = []
+                        if p1:
+                            sub_parts.append((p1, False))
+                        sub_parts.append((p_kw, True))
+                        if p2:
+                            sub_parts.append((p2, False))
+                    else:
+                        sub_parts = [(word, False)]
+                else:
+                    sub_parts = [(word, False)]
 
-            draw.text((x_cursor, y_cursor), word, font=font, fill=fill_color,
-                      stroke_width=stroke_width, stroke_fill=(0, 0, 0, 255))
+                for part_text, is_hl in sub_parts:
+                    p_box = dummy_draw.textbbox((0, 0), part_text, font=font)
+                    p_w = p_box[2] - p_box[0]
 
-            w_box = dummy_draw.textbbox((0, 0), word, font=font)
-            word_w = w_box[2] - w_box[0]
-            x_cursor += word_w + space_w
+                    if pass_mode == "shadow":
+                        # Starisborn 4.0px 드롭 섀도우
+                        draw.text(
+                            (x_cursor + 4, y_cursor + 4), part_text, font=font,
+                            fill=(0, 0, 0, 220),
+                            stroke_width=6, stroke_fill=(0, 0, 0, 220)
+                        )
+                    else:
+                        # Starisborn 74pt 볼드 텍스트 + 7.0px 블랙 외곽선
+                        fill_col = hl_rgba if is_hl else (255, 255, 255, 255)
+                        draw.text(
+                            (x_cursor, y_cursor), part_text, font=font,
+                            fill=fill_col,
+                            stroke_width=7, stroke_fill=(0, 0, 0, 255)
+                        )
+
+                    x_cursor += p_w
+
+                x_cursor += space_w
 
     img.save(out_png, "PNG")
     return out_png
@@ -438,8 +664,8 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: TopChapter, {font_name}, 62, &H00FFFFFF, &H00000000, &H00000000, &H00000000, 1, 0, 0, 0, 100, 100, 0, 0, 1, 6.0, 3.5, 8, 40, 40, 160, 1
-Style: DynamicSub, {font_name}, 74, &H00FFFFFF, &H00000000, &H00000000, &H00000000, 1, 0, 0, 0, 100, 100, 0, 0, 1, 7.0, 4.0, 2, 50, 50, 480, 1
+Style: TopChapter, {font_name} Bold, 60, &H0000E6FF, &H00000000, &H00000000, &H00000000, 0, 0, 0, 0, 100, 100, 0, 0, 1, 6.0, 3.5, 8, 40, 40, 230, 1
+Style: DynamicSub, {font_name} Bold, 74, &H00FFFFFF, &H00000000, &H00000000, &H00000000, 0, 0, 0, 0, 100, 100, 0, 0, 1, 7.0, 4.0, 2, 50, 50, 480, 1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -453,32 +679,79 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         scene_start = current_time
         scene_end = current_time + duration
 
-        caption = sc.get("image_caption") or sc.get("display_title", "")
+        caption = format_sub_display(sc.get("image_caption") or sc.get("display_title", ""))
         if caption:
             start_str = format_ass_time(scene_start)
             end_str = format_ass_time(scene_end)
-            chapter_text = rf"{{\c&H0000E6FF&}}0{s_no}{{\c&H00FFFFFF&}}  {caption}"
-            events.append(f"Dialogue: 1,{start_str},{end_str},TopChapter,,0,0,0,,{chapter_text}")
+            events.append(f"Dialogue: 1,{start_str},{end_str},TopChapter,,0,0,0,,{s_no:02d}  {caption}")
 
-        chunks = analyzed_map.get(s_no, [])
+        chunks = sc.get("chunks") or analyzed_map.get(s_no, [])
         if not chunks:
             chunks = rule_based_chunking(sc.get("script", ""))
 
-        lead_in = 0.0
-        if wav_paths and s_no in wav_paths and os.path.exists(wav_paths[s_no]):
-            lead_in = get_audio_voice_activity(wav_paths[s_no])
+        # 1. Google Cloud TTS 실측 Timepoints 우선 적용
+        timings = []
+        if chunks and len(chunks) > 0 and "start" in chunks[0]:
+            timings = [(c, float(c["start"]), float(c["end"])) for c in chunks]
+        else:
+            tp_loaded = False
+            if wav_paths and s_no in wav_paths and os.path.exists(wav_paths[s_no]):
+                audio_p = wav_paths[s_no]
+                cand_tps = [
+                    os.path.join(os.path.dirname(audio_p), f"timepoints_scene{s_no}.json"),
+                    os.path.join(os.path.dirname(os.path.dirname(audio_p)), f"timepoints_scene{s_no}.json")
+                ]
+                for tp_f in cand_tps:
+                    if os.path.exists(tp_f):
+                        try:
+                            with open(tp_f, "r", encoding="utf-8") as f_tp:
+                                tp_d = json.load(f_tp)
+                                timings = [(c, float(c["start"]), float(c["end"])) for c in tp_d.get("chunks", [])]
+                                tp_loaded = True
+                                break
+                        except Exception:
+                            pass
+            if not tp_loaded:
+                lead_in = 0.0
+                if wav_paths and s_no in wav_paths and os.path.exists(wav_paths[s_no]):
+                    lead_in = get_audio_voice_activity(wav_paths[s_no])
+                timings = calculate_weighted_timings(chunks, duration, lead_in=lead_in)
 
-        timings = calculate_weighted_timings(chunks, duration, lead_in=lead_in)
+        # 씬 지정 키워드
+        raw_kws = sc.get("highlight_keywords", [])
+        if isinstance(raw_kws, str):
+            raw_kws = [raw_kws]
+        elif not isinstance(raw_kws, list):
+            raw_kws = []
 
         for c_dict, c_st, c_en in timings:
             abs_st = scene_start + c_st
             abs_en = scene_start + c_en
-            c_text = c_dict["text"].strip()
+            c_text = format_sub_display(c_dict["text"].strip())
             c_highlight = c_dict.get("highlight", "").strip()
 
             styled_text = c_text
-            if c_highlight and c_highlight in styled_text:
-                styled_text = styled_text.replace(c_highlight, rf"{{\c&H0000E6FF&}}{c_highlight}{{\c&H00FFFFFF&}}", 1)
+            applied_highlight = False
+
+            # 1순위: 대본 키워드 매칭
+            for kw in raw_kws:
+                kw_clean = str(kw).strip(" .,?!'\"")
+                for cand in [kw_clean, format_sub_display(kw_clean)]:
+                    if cand and cand in styled_text:
+                        replacement = rf"{{\c&H0000E6FF&}}{cand}{{\c&H00FFFFFF&}}"
+                        styled_text = styled_text.replace(cand, replacement, 1)
+                        applied_highlight = True
+                        break
+                if applied_highlight:
+                    break
+
+            # 2순위: 청크 키워드 매칭 (서술어 배제)
+            if not applied_highlight and c_highlight:
+                cand = format_sub_display(c_highlight.strip(" .,?!'\""))
+                if len(cand) >= 2 and not any(cand.endswith(se) for se in STOP_ENDINGS):
+                    if cand in styled_text:
+                        replacement = rf"{{\c&H0000E6FF&}}{cand}{{\c&H00FFFFFF&}}"
+                        styled_text = styled_text.replace(cand, replacement, 1)
 
             st_str = format_ass_time(abs_st)
             et_str = format_ass_time(abs_en)

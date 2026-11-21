@@ -14,6 +14,8 @@ if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
 WORKSPACE_DIR = os.path.dirname(BASE_DIR)
 CONFIG_DIR = os.path.join(BASE_DIR, 'config')
 CRED_PATH = os.path.join(CONFIG_DIR, 'application_default_credentials.json')
@@ -33,7 +35,7 @@ _sys_ffmpeg = shutil.which("ffmpeg")
 FFMPEG = _sys_ffmpeg if _sys_ffmpeg else imageio_ffmpeg.get_ffmpeg_exe()
 
 CANVAS_W, CANVAS_H = 1080, 1920
-FPS = 24
+FPS = 30
 BGM_DIR = os.path.join(BASE_DIR, 'assets', 'bgm')
 
 CORNER_COLOR_MAP = {
@@ -177,23 +179,28 @@ def render_intro_cover_image(bg_path, header_str, highlight_cat, main_title, why
     base_img = Image.alpha_composite(base_img, scrim)
     draw = ImageDraw.Draw(base_img)
 
-    f_top = get_font(30)
+    f_brand = get_font(34)
     f_main = get_font(68)
-    f_sub = get_font(28)
-    f_cue = get_font(24)
+    gold_color = (255, 215, 0)
+    brand_color = (0, 210, 255)  # 시네마틱 스카이블루/네온 시안 (#00D2FF)
 
-    # 1. 상단 미니멀 날짜/브랜딩 (알약/박스 없음!)
-    month_names_en = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE",
-                      "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"]
-    if lang == "en":
-        m_name = month_names_en[max(0, min(11, month_num - 1))]
-        top_txt = f"{m_name} {day_num}  |  ON THIS DAY"
+    # 1. 상단 브랜딩 ("● 역사 딥다이브 | 11.17" 시네마틱 스카이블루/네온 시안으로 배치)
+    brand_y = 120
+    draw.ellipse([70, brand_y - 10, 88, brand_y + 8], fill=brand_color)
+
+    digits = re.sub(r'\D', '', target_date_str or "")
+    if len(digits) >= 8:
+        mm = int(digits[4:6])
+        dd = int(digits[6:8])
+        date_label = f"{mm:02d}.{dd:02d}"
     else:
-        top_txt = f"{month_num}월 {day_num}일  |  역사 속 오늘"
-    tb = draw.textbbox((0, 0), top_txt, font=f_top)
-    draw.text(((CANVAS_W - (tb[2] - tb[0])) // 2, 230), top_txt, font=f_top, fill=(255, 215, 0), stroke_width=3, stroke_fill="black")
+        date_label = "11.17"
 
-    # 2. 메인 질문 (영화 포스터급 볼드 타이포, 박스 없음!)
+    brand_label = highlight_cat or ("HISTORY TIME MACHINE" if lang == "en" else "역사 딥다이브")
+    brand_text = f"{brand_label}   |   {date_label}"
+    draw.text((105, brand_y), brand_text, fill=brand_color, font=f_brand, anchor="lm")
+
+    # 2. 메인 질문 제목 (다른 사족 없이 제목만 단독 배치, 모두 노란색으로 동일하게 표시)
     clean_title = sanitize_tofu(main_title.strip())
     words = clean_title.split()
     lines, cur = [], []
@@ -208,111 +215,93 @@ def render_intro_cover_image(bg_path, header_str, highlight_cat, main_title, why
     if cur:
         lines.append(" ".join(cur))
 
-    start_y = 510 if len(lines) <= 2 else 460
-    step_y = 100
+    start_y = 540 if len(lines) <= 2 else 480
+    step_y = 104
     for idx_l, l_str in enumerate(lines[:3]):
         b = draw.textbbox((0, 0), l_str, font=f_main)
         lx = (CANVAS_W - (b[2] - b[0])) // 2
         ly = start_y + idx_l * step_y
+        # 3.5px 드롭 섀도우
         draw.text((lx + 3, ly + 3), l_str, font=f_main, fill=(0, 0, 0, 240))
-        fill_c = (255, 255, 255) if idx_l == 0 else (255, 215, 0)
-        draw.text((lx, ly), l_str, font=f_main, fill=fill_c, stroke_width=4, stroke_fill="black")
+        # 모두 노란색(#FFD700) 통일 렌더링 + 4.0px 블랙 아웃라인
+        draw.text((lx, ly), l_str, font=f_main, fill=gold_color, stroke_width=4, stroke_fill="black")
 
-    # 3. 얇은 골드 액센트 분리선
-    div_y = start_y + len(lines[:3]) * step_y + 25
-    draw.line([(380, div_y), (700, div_y)], fill=(229, 169, 60, 220), width=2)
-
-    # 4. 서브 훅 설명 (충분한 좌우 여백과 줄바꿈)
-    why_text = sanitize_tofu(why_desc or why_title or ("The turning point that shaped modern history" if lang == "en" else "주권국가 체제의 초석을 다진 베스트팔렌 조약의 진실"))
-    w_words = why_text.split()
-    w_lines, w_cur = [], []
-    for w in w_words:
-        cand = " ".join(w_cur + [w])
-        bb = draw.textbbox((0, 0), cand, font=f_sub)
-        if (bb[2] - bb[0]) > 840 and w_cur:
-            w_lines.append(" ".join(w_cur))
-            w_cur = [w]
-        else:
-            w_cur.append(w)
-    if w_cur:
-        w_lines.append(" ".join(w_cur))
-
-    sub_y = div_y + 35
-    for wl in w_lines[:2]:
-        sb = draw.textbbox((0, 0), wl, font=f_sub)
-        draw.text(((CANVAS_W - (sb[2] - sb[0])) // 2, sub_y), wl, font=f_sub, fill=(240, 245, 255), stroke_width=2, stroke_fill="black")
-        sub_y += 42
-
-    # 5. 하단 탐구 유도 문구
-    cue = "EXPLORE TODAY'S HISTORY" if lang == "en" else "오늘의 역사 깊이보기"
-    cb = draw.textbbox((0, 0), cue, font=f_cue)
-    draw.text(((CANVAS_W - (cb[2] - cb[0])) // 2, sub_y + 55), cue, font=f_cue, fill=(229, 169, 60), stroke_width=2, stroke_fill="black")
-
+    # 사족(골드 분리선, 오늘 알아야 할 이유, 깊이보기) 전면 삭제 완료
     return base_img
 
 
 # -------------------------------------------------------------
-# [본문용] 방송사 다큐멘터리 스타일 상단 통합 헤더 (알약 0%, 사료 상단 배치 100% 가시성)
+# [본문용] 상단 소제목 독립 오버레이 (번호/사료 제외 순수 소제목만 노란색 단독 렌더링)
+# -------------------------------------------------------------
+def render_scene_header_overlay_png(scene_idx, scene_title, archive_caption=None, credit_str=None, image_type="archive", lang="ko", out_png=None):
+    from src.subtitle_engine import format_sub_display
+    img = Image.new("RGBA", (CANVAS_W, CANVAS_H), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    # 1. 탑 소제목 라벨 (번호 01 및 사료 제외, 순수 소제목만 56pt 볼드 노란색 단독 표시)
+    font_chapter = get_font(56)
+    clean_title = format_sub_display(sanitize_tofu((scene_title or "").strip()))
+    gold_color = (255, 215, 0)
+
+    cb = draw.textbbox((0, 0), clean_title, font=font_chapter)
+    cw = cb[2] - cb[0]
+    cx = (CANVAS_W - cw) // 2
+    cy = 210  # MarginV=230 equivalent from top
+
+    # 3.5px 블랙 드롭 섀도우
+    draw.text((cx + 3, cy + 3), clean_title, font=font_chapter, fill=(0, 0, 0, 220), stroke_width=5, stroke_fill=(0, 0, 0, 220))
+    # 6.0px 블랙 아웃라인 & 전체 노란색(#FFD700) 통일 렌더링
+    draw.text((cx, cy), clean_title, font=font_chapter, fill=gold_color, stroke_width=6, stroke_fill="black")
+
+    # 2. 크레딧 정보 (최하단 y=1885 은은한 워터마크)
+    if credit_str:
+        f_cred = get_font(18)
+        cr_b = draw.textbbox((0, 0), credit_str, font=f_cred)
+        draw.text(((CANVAS_W - (cr_b[2] - cr_b[0])) // 2, 1885), credit_str, font=f_cred, fill=(180, 195, 215, 140))
+
+    if out_png:
+        img.save(out_png, "PNG")
+    return img
+
+
+# -------------------------------------------------------------
+# [전체 씬용] 상단 브랜드 워터마크 오버레이 (Y=120 "● 역사 딥다이브 | 11.17" 전체 노란색 통일)
+# -------------------------------------------------------------
+def generate_brand_overlay_png(corner_name, target_date_str, topic_title=None, out_png=None, lang="ko"):
+    from src.subtitle_engine import format_sub_display
+    img = Image.new("RGBA", (CANVAS_W, CANVAS_H), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    brand_y = 120
+    brand_color = (0, 210, 255)  # 시네마틱 스카이블루/네온 시안 (#00D2FF)
+
+    # 1. 네온 시안 인디케이터 도트
+    draw.ellipse([70, brand_y - 10, 88, brand_y + 8], fill=brand_color)
+
+    # 2. 날짜 및 브랜딩 텍스트 (시안/스카이블루로 표시)
+    digits = re.sub(r'\D', '', target_date_str or "")
+    if len(digits) >= 8:
+        mm = int(digits[4:6])
+        dd = int(digits[6:8])
+        date_label = f"{mm:02d}.{dd:02d}"
+    else:
+        date_label = "11.17"
+
+    brand_label = corner_name or ("HISTORY TIME MACHINE" if lang == "en" else "역사 딥다이브")
+    font_brand = get_font(34)
+    # 뒤에 토픽명 없이 "● 역사 딥다이브 | 11.17"만 시안/스카이블루로 표시
+    brand_text = f"{brand_label}   |   {date_label}"
+    draw.text((105, brand_y), brand_text, fill=brand_color, font=font_brand, anchor="lm")
+
+    if out_png:
+        img.save(out_png, "PNG")
+    return img
+
+
 # -------------------------------------------------------------
 def draw_cinematic_scene_header(draw, base_img, date_str, scene_title, archive_caption=None, credit_str=None, image_type="archive", lang="ko"):
-    font_date = get_font(28)
-    font_title = get_font(48)
-    font_arc = get_font(24)
-
-    # 1. 상단 날짜 (28pt 골드, 알약 없음!)
-    fallback_date = "ON THIS DAY" if lang == "en" else "오늘의 역사"
-    clean_date = sanitize_tofu(date_str) if date_str else fallback_date
-    db = draw.textbbox((0, 0), clean_date, font=font_date)
-    draw.text(((CANVAS_W - (db[2] - db[0])) // 2, 155), clean_date, font=font_date, fill=(255, 215, 0), stroke_width=3, stroke_fill="black")
-
-    # 2. 씬 메인 소제목 (48pt Bold White with drop shadow)
-    clean_title = sanitize_tofu(scene_title.strip())
-    tb = draw.textbbox((0, 0), clean_title, font=font_title)
-    tx = (CANVAS_W - (tb[2] - tb[0])) // 2
-    ty = 210
-    draw.text((tx + 2, ty + 2), clean_title, font=font_title, fill=(0, 0, 0, 240))
-    draw.text((tx, ty), clean_title, font=font_title, fill=(255, 255, 255), stroke_width=4, stroke_fill='black')
-
-    # 3. [핵심 개선] 사료 정보 상단 배치 (100% 식별 보장, 알약 없음)
-    if archive_caption and archive_caption.strip() and archive_caption.strip() != clean_title:
-        clean_cap = sanitize_tofu(archive_caption.strip())
-        src_suffix = ""
-        is_ai = (image_type == "ai_generated") or (credit_str and ("Vertex AI" in credit_str or "AI 생성" in credit_str or "AI" in credit_str))
-        
-        if lang == "en":
-            if is_ai:
-                prefix = "AI GENERATED"
-                src_suffix = " (Vertex AI)"
-            else:
-                prefix = "ARCHIVE"
-                src_suffix = " (Wikimedia Commons)"
-        else:
-            if is_ai:
-                prefix = "AI 생성"
-                if credit_str and "Vertex AI" in credit_str:
-                    src_suffix = " (Vertex AI)"
-                else:
-                    src_suffix = " (AI 복원)"
-            else:
-                prefix = "사료"
-                if credit_str:
-                    if "위키미디어" in credit_str:
-                        src_suffix = " (위키미디어 커먼즈)"
-                    elif "연방기록관" in credit_str:
-                        src_suffix = " (독일 연방기록관)"
-
-        arc_txt = f"{prefix} : {clean_cap}{src_suffix}"
-        ab = draw.textbbox((0, 0), arc_txt, font=font_arc)
-        aw = ab[2] - ab[0]
-        ax = (CANVAS_W - aw) // 2
-        ay = 280
-
-        # 단정한 직사각형 다크 틴트 스트립 (알약 X, 모서리 둥글지 않음)
-        draw.rectangle([ax - 16, ay - 3, ax + aw + 16, ay + 31], fill=(10, 14, 22, 175))
-        draw.text((ax, ay), arc_txt, font=font_arc, fill=(255, 235, 185) if not is_ai else (175, 225, 255), stroke_width=2, stroke_fill='black')
-        return ay + 35
-
-    return ty + 60
+    # 하위 호환용 스텁
+    return 280
 
 
 # -------------------------------------------------------------
@@ -643,12 +632,13 @@ def render_outro_finale_image(bg_path, credit_str, outro_debate=None, date_title
 
 
 # -------------------------------------------------------------
-# 본문 씬 렌더러
+# 본문 씬 렌더러 (Starisborn 규격 74pt 다이내믹 자막 + 정적 탑 챕터 + 6대 시네마틱 모션)
 # -------------------------------------------------------------
-def render_body_scene_chunk(bg_path, corner_name, date_title, credit_str, tts_text, audio_path, duration, out_chunk_mp4, temp_dir, zoom_in=True, subtitle_cards=None, caption_str=None, image_type="archive", dynamic_chunks=None, scene_title=None, lang="ko"):
+def render_body_scene_chunk(bg_path, corner_name, date_title, credit_str, tts_text, audio_path, duration, out_chunk_mp4, temp_dir, camera_motion="push_in", sfx_path=None, subtitle_cards=None, caption_str=None, image_type="archive", dynamic_chunks=None, scene_title=None, lang="ko", highlight_keywords=None):
     os.makedirs(temp_dir, exist_ok=True)
     frames = max(1, int(round(duration * FPS)))
 
+    # 1. 배경 이미지 (텍스트 없이 순수 이미지 로드 + 상하단 시네마틱 비네팅)
     base_img = load_and_fill_fullscreen(bg_path)
     base_img = apply_top_soft_gradient(base_img)
 
@@ -660,27 +650,54 @@ def render_body_scene_chunk(bg_path, corner_name, date_title, credit_str, tts_te
         s_draw.line([(0, sy), (CANVAS_W, sy)], fill=(0, 0, 0, alpha))
     base_img = Image.alpha_composite(base_img, scrim)
 
-    draw = ImageDraw.Draw(base_img)
-    actual_title = scene_title or date_title
-    draw_cinematic_scene_header(draw, base_img, date_title, actual_title, archive_caption=caption_str, credit_str=credit_str, image_type=image_type, lang=lang)
-
     base_bg_png = os.path.join(temp_dir, "base_bg.png")
     base_img.convert("RGB").save(base_bg_png, "PNG")
 
-    # 스타이즈본 방식 다이내믹 자막 엔진 연동 (VAD 무음 감지 + 호흡 가중치 + 키워드 골드 하이라이트)
-    from src.subtitle_engine import (
-        rule_based_chunking,
-        get_audio_voice_activity,
-        calculate_weighted_timings,
-        render_highlighted_subtitle_png
+    # 2. 상단 탑 챕터 및 사료 캡션 독립 오버레이 (Starisborn TopChapter 규격, 줌팬과 분리)
+    m_s = re.search(r'scene(\d+)', os.path.basename(audio_path))
+    s_idx_num = int(m_s.group(1)) if m_s else 1
+    header_png = os.path.join(temp_dir, f"header_{s_idx_num:02d}.png")
+    render_scene_header_overlay_png(
+        scene_idx=s_idx_num,
+        scene_title=scene_title or date_title,
+        archive_caption=caption_str,
+        credit_str=credit_str,
+        image_type=image_type,
+        lang=lang,
+        out_png=header_png
     )
 
-    if not dynamic_chunks:
-        dynamic_chunks = rule_based_chunking(tts_text, lang=lang)
+    # 3. Google Cloud TTS SSML 실측 타임스탬프 우선 적용 (오차 0%)
+    timings = []
+    if dynamic_chunks and len(dynamic_chunks) > 0 and "start" in dynamic_chunks[0]:
+        timings = [(c, float(c["start"]), float(c["end"])) for c in dynamic_chunks]
+    else:
+        s_idx_str = str(s_idx_num)
+        cand_tps = [
+            os.path.join(os.path.dirname(audio_path), f"timepoints_scene{s_idx_str}.json"),
+            os.path.join(os.path.dirname(os.path.dirname(audio_path)), f"timepoints_scene{s_idx_str}.json")
+        ]
+        for tp_f in cand_tps:
+            if os.path.exists(tp_f):
+                try:
+                    with open(tp_f, "r", encoding="utf-8") as f_tp:
+                        tp_d = json.load(f_tp)
+                        timings = [(c, float(c["start"]), float(c["end"])) for c in tp_d.get("chunks", [])]
+                        print(f"    ⏱️ [Scene {s_idx_str}] 구글 TTS 실측 Timepoints 적용 완료 ({len(timings)}개 청크)")
+                        break
+                except Exception:
+                    pass
 
-    lead_in = get_audio_voice_activity(audio_path, ffmpeg_bin=FFMPEG)
-    timings = calculate_weighted_timings(dynamic_chunks, duration, lead_in=lead_in)
+    # 실측 파일이 없는 경우 안전 폴백 (기존 가중 배분)
+    if not timings:
+        from src.subtitle_engine import rule_based_chunking, get_audio_voice_activity, calculate_weighted_timings
+        if not dynamic_chunks:
+            dynamic_chunks = rule_based_chunking(tts_text, lang=lang)
+        lead_in = get_audio_voice_activity(audio_path, ffmpeg_bin=FFMPEG)
+        timings = calculate_weighted_timings(dynamic_chunks, duration, lead_in=lead_in)
 
+    # 4. Starisborn 74pt 다이내믹 자막 카드 렌더링 (다크 박스 없음, 순수 타이포그래피)
+    from src.subtitle_engine import render_highlighted_subtitle_png
     sub_png_info = []
     for idx, (c_dict, st, en) in enumerate(timings):
         sub_p = os.path.join(temp_dir, f"sub_{idx:02d}.png")
@@ -689,33 +706,89 @@ def render_body_scene_chunk(bg_path, corner_name, date_title, credit_str, tts_te
             highlight_word=c_dict.get("highlight", ""),
             out_png=sub_p,
             font_path=FONT_PATH,
-            highlight_color="#FFD700"
+            highlight_color="#FFE600",
+            highlight_keywords=highlight_keywords
         )
         sub_png_info.append((sub_p, st, en))
 
-    zoom_step = 0.08 / max(1, frames)
-    vf = []
-    if zoom_in:
-        vf.append(f"scale=2332:4148,zoompan=z='min(1.0+{zoom_step:.7f}*on,1.08)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={frames}:s={CANVAS_W}x{CANVAS_H}:fps={FPS}")
-    else:
-        vf.append(f"scale=2332:4148,zoompan=z='max(1.08-{zoom_step:.7f}*on,1.0)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={frames}:s={CANVAS_W}x{CANVAS_H}:fps={FPS}")
-    vf.append("format=yuv420p")
+    # 5. 6대 시네마틱 카메라 모션 수식 (스타이즈본 1% 규격 이식)
+    vignette_prefix = ""
+    total_frames = max(1, frames)
 
-    for _, st, en in sub_png_info:
-        vf.append(f"overlay=(W-w)/2:1390:enable='between(t,{st:.3f},{en:.3f})'")
+    if camera_motion == "face_zoom":
+        step = 0.15 / total_frames
+        zoom_expr = f"min(1.05+on*{step:.7f}, 1.20)"
+        x_expr = "iw/2-(iw/zoom/2)"
+        y_expr = "ih*0.35-(ih/zoom*0.35)"
+    elif camera_motion == "push_in":
+        step = 0.19 / total_frames
+        zoom_expr = f"min(1.05+on*{step:.7f}, 1.24)"
+        x_expr = "iw/2-(iw/zoom/2)"
+        y_expr = "ih/2-(ih/zoom/2)"
+    elif camera_motion == "pan_lr":
+        zoom_expr = "1.18"
+        x_expr = f"(iw-iw/zoom)*(on/{max(1, total_frames - 1)})"
+        y_expr = "ih/2-(ih/zoom/2)"
+    elif camera_motion == "tilt_up":
+        zoom_expr = "1.18"
+        x_expr = "iw/2-(iw/zoom/2)"
+        y_expr = f"(ih-ih/zoom)*(0.75-0.55*(on/{max(1, total_frames - 1)}))"
+    elif camera_motion == "vignette_zoom_out":
+        vignette_prefix = "vignette=PI/4.2,"
+        step = 0.20 / total_frames
+        zoom_expr = f"max(1.20-on*{step:.7f}, 1.00)"
+        x_expr = "iw/2-(iw/zoom/2)"
+        y_expr = "ih/2-(ih/zoom/2)"
+    elif camera_motion == "slow_drift":
+        zoom_expr = "1.15"
+        x_expr = f"(iw-iw/zoom)*(0.15+0.7*(on/{max(1, total_frames - 1)}))"
+        y_expr = f"(ih-ih/zoom)*(0.2+0.6*(on/{max(1, total_frames - 1)}))"
+    else:
+        step = 0.08 / total_frames
+        zoom_expr = f"min(1.0+{step:.7f}*on, 1.08)"
+        x_expr = "iw/2-(iw/zoom/2)"
+        y_expr = "ih/2-(ih/zoom/2)"
+
+    # 필터 체인 구성:
+    # 0:v -> 켄번스 모션 -> [bg_v]
+    # [bg_v][1:v]overlay=0:0 -> 상단 탑 챕터 헤더 오버레이 -> [v0]
+    # [v0] 위에 74pt 다이내믹 자막 오버레이 순차 결합 (모바일 세이프존 y=1410)
+    filter_parts = []
+    filter_parts.append(f"[0:v]{vignette_prefix}scale=2332:4148,zoompan=z='{zoom_expr}':x='{x_expr}':y='{y_expr}':d={frames}:s={CANVAS_W}x{CANVAS_H}:fps={FPS},format=yuv420p[bg_v]")
+    filter_parts.append(f"[bg_v][1:v]overlay=0:0[v0]")
+
+    last_v = "v0"
+    for s_i, (_, st, en) in enumerate(sub_png_info):
+        sub_inp_idx = 2 + s_i
+        next_v = f"v{s_i+1}"
+        filter_parts.append(f"[{last_v}][{sub_inp_idx}:v]overlay=(W-w)/2:1410:enable='between(t,{st:.3f},{en:.3f})'[{next_v}]")
+        last_v = next_v
 
     cmd = [
         FFMPEG, "-y", "-loglevel", "error",
-        "-i", base_bg_png
+        "-i", base_bg_png,
+        "-i", header_png
     ]
     for sub_p, _, _ in sub_png_info:
         cmd += ["-i", sub_p]
     cmd += ["-i", audio_path]
 
-    filter_complex = f"[0:v]{','.join(vf)}[v]"
+    nar_idx = 2 + len(sub_png_info)
+
+    if sfx_path and os.path.exists(sfx_path):
+        cmd += ["-i", sfx_path]
+        sfx_idx = nar_idx + 1
+        filter_parts.append(f"[{nar_idx}:a]volume=1.0[nar];[{sfx_idx}:a]volume=0.20[whoosh];[nar][whoosh]amix=inputs=2:duration=first:normalize=0[a]")
+        final_map_a = "[a]"
+    else:
+        filter_parts.append(f"[{nar_idx}:a]volume=1.0[a]")
+        final_map_a = "[a]"
+
+    filter_complex = ";".join(filter_parts)
+
     cmd += [
         "-filter_complex", filter_complex,
-        "-map", "[v]", "-map", f"{1 + len(sub_png_info)}:a",
+        "-map", f"[{last_v}]", "-map", final_map_a,
         "-t", f"{duration:.3f}",
         "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
         "-c:a", "aac", "-b:a", "192k", "-ar", "44100", "-ac", "2",
@@ -725,12 +798,11 @@ def render_body_scene_chunk(bg_path, corner_name, date_title, credit_str, tts_te
     subprocess.run(cmd, check=True)
 
 
-def render_cover_chunk(img, duration, out_mp4, zoom_in=True):
+def render_cover_chunk(img, duration, out_mp4, zoom_in=True, sfx_impact_path=None):
     frames = max(1, int(round(duration * FPS)))
     temp_cover_png = out_mp4 + "_temp.png"
     img.convert("RGB").save(temp_cover_png, "PNG")
 
-    # 첫 28프레임(약 1.2초) 동안 정지(Hold)하여 시청자가 타이틀을 편안하게 읽을 수 있도록 한 후 부드러운 시네마틱 줌 전개
     hold_frames = min(frames // 3, 28)
     active_frames = max(1, frames - hold_frames)
     cover_step = 0.035 / active_frames
@@ -739,23 +811,37 @@ def render_cover_chunk(img, duration, out_mp4, zoom_in=True):
     else:
         vf = f"scale=2332:4148,zoompan=z='if(lte(on,{hold_frames}),1.04,max(1.04-{cover_step:.7f}*(on-{hold_frames}),1.0))':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={frames}:s={CANVAS_W}x{CANVAS_H}:fps={FPS},format=yuv420p"
 
-    cmd = [
-        FFMPEG, "-y", "-loglevel", "error",
-        "-loop", "1", "-i", temp_cover_png,
-        "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo",
-        "-vf", vf,
-        "-t", f"{duration:.3f}",
-        "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
-        "-c:a", "aac", "-b:a", "192k",
-        "-shortest",
-        out_mp4
-    ]
+    if sfx_impact_path and os.path.exists(sfx_impact_path):
+        filter_complex = f"[0:v]{vf}[v];[1:a]volume=0.40,atrim=0:0.8,apad=whole_dur={duration:.3f}[a]"
+        cmd = [
+            FFMPEG, "-y", "-loglevel", "error",
+            "-loop", "1", "-i", temp_cover_png,
+            "-i", sfx_impact_path,
+            "-filter_complex", filter_complex,
+            "-map", "[v]", "-map", "[a]",
+            "-t", f"{duration:.3f}",
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+            "-c:a", "aac", "-b:a", "192k", "-ar", "44100", "-ac", "2",
+            out_mp4
+        ]
+    else:
+        cmd = [
+            FFMPEG, "-y", "-loglevel", "error",
+            "-loop", "1", "-i", temp_cover_png,
+            "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo",
+            "-vf", vf,
+            "-t", f"{duration:.3f}",
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+            "-c:a", "aac", "-b:a", "192k",
+            "-shortest",
+            out_mp4
+        ]
     subprocess.run(cmd, check=True)
     if os.path.exists(temp_cover_png):
         os.remove(temp_cover_png)
 
 
-def assemble_final_shorts(chunk_mp4_list, bgm_mp3, final_output_mp4, temp_dir, bgm_vol=0.22):
+def assemble_final_shorts(chunk_mp4_list, bgm_mp3, final_output_mp4, temp_dir, bgm_vol=0.12, brand_overlay_png=None, thumb_duration=3.5):
     concat_txt = os.path.join(temp_dir, "concat.txt")
     with open(concat_txt, "w", encoding="utf-8") as f:
         for p in chunk_mp4_list:
@@ -778,18 +864,32 @@ def assemble_final_shorts(chunk_mp4_list, bgm_mp3, final_output_mp4, temp_dir, b
         h, m_val, s = m.groups()
         total_dur = int(h) * 3600 + int(m_val) * 60 + float(s)
 
+    # 사이드체인 오디오 덕킹: 성우 발화 시 BGM 볼륨 -18dB 자동 감쇄, 쉼표 구간 즉시 복원
     filter_complex = (
         f"[1:a]aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo,volume={bgm_vol:.2f},atrim=0:{total_dur:.3f},afade=t=out:st={max(0.0, total_dur - 2.5):.3f}:d=2.5[bg];"
-        f"[0:a]aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo[fg];"
-        f"[fg][bg]amix=inputs=2:duration=first:normalize=0[a];"
+        f"[0:a]aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo,asplit=2[fg1][fg2];"
+        f"[bg][fg2]sidechaincompress=threshold=0.06:ratio=6:attack=40:release=350[ducked_bg];"
+        f"[fg1][ducked_bg]amix=inputs=2:duration=first:normalize=0[a];"
         f"color=c=0xFFD700:s=1080x6:r={FPS}[goldbar];"
-        f"[0:v][goldbar]overlay=x='-1080+1080*(t/{total_dur:.3f})':y=0[v]"
     )
 
     cmd = [
         FFMPEG, "-y", "-loglevel", "error",
         "-i", no_bgm_mp4,
-        "-stream_loop", "-1", "-i", bgm_mp3,
+        "-stream_loop", "-1", "-i", bgm_mp3
+    ]
+
+    # 상단 브랜드 워터마크 오버레이 (Starisborn 1:1 규격: 썸네일 이후 t >= thumb_duration 전 구간 유지)
+    if brand_overlay_png and os.path.exists(brand_overlay_png):
+        cmd += ["-i", brand_overlay_png]
+        filter_complex += (
+            f"[0:v][goldbar]overlay=x='-1080+1080*(t/{total_dur:.3f})':y=0[v_gold];"
+            f"[v_gold][2:v]overlay=0:0:enable='gte(t,{thumb_duration:.3f})'[v]"
+        )
+    else:
+        filter_complex += f"[0:v][goldbar]overlay=x='-1080+1080*(t/{total_dur:.3f})':y=0[v]"
+
+    cmd += [
         "-filter_complex", filter_complex,
         "-map", "[v]", "-map", "[a]",
         "-c:v", "libx264", "-preset", "veryfast", "-crf", "19",
@@ -829,6 +929,13 @@ def render_masterpiece_from_script(target_dir, lang=None):
             images_dir = parent_images
 
     audio_dir = os.path.join(target_dir, "audio")
+    if not os.path.exists(audio_dir) or not os.listdir(audio_dir):
+        ko_audio = os.path.join(target_dir, "ko", "audio")
+        parent_audio = os.path.join(os.path.dirname(target_dir), "audio")
+        if os.path.exists(ko_audio) and os.listdir(ko_audio):
+            audio_dir = ko_audio
+        elif os.path.exists(parent_audio) and os.listdir(parent_audio):
+            audio_dir = parent_audio
     temp_dir = os.path.join(target_dir, "master_render_temp")
     if os.path.exists(temp_dir):
         shutil.rmtree(temp_dir)
@@ -865,7 +972,11 @@ def render_masterpiece_from_script(target_dir, lang=None):
     chunks_list = []
     scenes = meta.get("scenes", [])
 
-    # [Step 0] 0~4.2초 표지 인트로
+    # [SFX] 로열티 프리 효과음 라이브러리 탑재
+    from src.sfx_manager import ensure_sfx_assets
+    sfx_dict = ensure_sfx_assets()
+
+    # [Step 0] 0~3.5초 표지 인트로 (0초 서브베이스 Impact SFX 탑재)
     cover_bg = os.path.join(images_dir, "scene_1.jpg") if os.path.exists(os.path.join(images_dir, "scene_1.jpg")) else None
     main_yr = meta.get("main_year", year_str)
     
@@ -887,12 +998,22 @@ def render_masterpiece_from_script(target_dir, lang=None):
     cover_title = meta.get("hook_question", master_date_title)
     why_desc = meta.get("why_today_desc", "")
 
-    COVER_DURATION = 4.2
-    print(f"  [Step 0] 0~{COVER_DURATION}초 표지 인트로 영상 렌더링 (안정적 정지 홀드 적용)...")
+    COVER_DURATION = 3.5
+    print(f"  [Step 0] 0~{COVER_DURATION}초 표지 인트로 영상 렌더링 (0초 Impact SFX + 안정적 정지 홀드 적용)...")
     cover_img = render_intro_cover_image(cover_bg, cover_header, corner_name, cover_title, why_title, why_desc, target_date_str=date_basename, kicker_str=kicker_txt, lang=lang)
     cover_mp4 = os.path.join(temp_dir, "part_00_intro_cover.mp4")
-    render_cover_chunk(cover_img, COVER_DURATION, cover_mp4, zoom_in=True)
+    render_cover_chunk(cover_img, COVER_DURATION, cover_mp4, zoom_in=True, sfx_impact_path=sfx_dict.get("impact"))
     chunks_list.append(cover_mp4)
+
+    # [Brand] Starisborn 규격 상단 브랜드 워터마크 오버레이 생성 (Y=120 골드 닷 + 브랜딩 + 토픽)
+    brand_overlay_png = os.path.join(temp_dir, "brand_overlay.png")
+    generate_brand_overlay_png(
+        corner_name=corner_name,
+        target_date_str=date_basename,
+        topic_title=meta.get("title") or event_title,
+        out_png=brand_overlay_png,
+        lang=lang
+    )
 
     # [Subtitle] 스타이즈본 벤치마킹 다이내믹 자막 청킹 & 키워드 분석
     from src.subtitle_engine import analyze_dynamic_chunks, build_pro_ass_file
@@ -921,6 +1042,7 @@ def render_masterpiece_from_script(target_dir, lang=None):
         display_title = sc.get("display_title", "HISTORY MOMENT" if lang == "en" else "오늘의 역사")
         caption = sc.get("image_caption", "")
         credit = sc.get("credit", "Archive: Wikimedia Commons" if lang == "en" else "출처: 역사 기록 사료 / 위키미디어 커먼즈")
+        c_motion = sc.get("camera_motion", "push_in")
 
         # 씬별 상단 뱃지 텍스트
         if lang == "en":
@@ -936,10 +1058,10 @@ def render_masterpiece_from_script(target_dir, lang=None):
                 sc_yr = yr_m.group(1) if yr_m else ""
                 sc_date_str = f"{sc_yr}년의 오늘" if sc_yr else "오늘의 역사"
 
-        print(f"  [Step {idx+1}] 씬 {s_num}: {dur:.1f}s - [{display_title}] {caption}...")
+        print(f"  [Step {idx+1}] 씬 {s_num}: {dur:.1f}s [{c_motion}] - [{display_title}] {caption}...")
         sc_mp4 = os.path.join(temp_dir, f"part_{s_num:02d}.mp4")
         sc_tmp = os.path.join(temp_dir, f"tmp_{s_num}")
-        dynamic_chunks = analyzed_map.get(s_num, [])
+        dynamic_chunks = sc.get("chunks") or analyzed_map.get(s_num, [])
         render_body_scene_chunk(
             bg_path=img_p,
             corner_name=corner_name,
@@ -950,36 +1072,30 @@ def render_masterpiece_from_script(target_dir, lang=None):
             duration=dur,
             out_chunk_mp4=sc_mp4,
             temp_dir=sc_tmp,
-            zoom_in=(idx % 2 == 0),
+            camera_motion=c_motion,
+            sfx_path=sfx_dict.get("whoosh"),
             caption_str=caption,
             image_type=image_type,
             dynamic_chunks=dynamic_chunks,
             scene_title=display_title,
-            lang=lang
+            lang=lang,
+            highlight_keywords=sc.get("highlight_keywords", [])
         )
         chunks_list.append(sc_mp4)
 
-    # [마지막 3.5초] 아웃트로 피날레
-    print("  [Step 6] 3.5초 정갈한 인터랙션 아웃트로 피날레 렌더링...")
-    last_img = os.path.join(images_dir, "scene_1.jpg") if os.path.exists(os.path.join(images_dir, "scene_1.jpg")) else (os.path.join(images_dir, f"scene_{len(scenes)}.jpg") if scenes else None)
-    outro_debate = meta.get("outro_debate", {})
-    if lang == "en":
-        date_title_h = f"{m_name_en} {dd} History Documentary"
-    else:
-        date_title_h = f"{mm}월 {dd}일의 역사 다큐멘터리" if len(digits) >= 8 else "역사 다큐멘터리"
-    outro_img = render_outro_finale_image(last_img, "Public History Archive" if lang == "en" else "오늘의 역사 아카이브", outro_debate=outro_debate, date_title_str=date_title_h, lang=lang)
-    outro_mp4 = os.path.join(temp_dir, "part_99_outro_finale.mp4")
-    render_cover_chunk(outro_img, 3.5, outro_mp4, zoom_in=False)
-    chunks_list.append(outro_mp4)
-
-    # Concat + BGM 오토덕킹 + 상단 6px 골드 진행선 바
-    print("  [Step 7] Concat + BGM 오토덕킹 + 상단 6px 골드 진행선 바 합성...")
+    # Concat + BGM 오토덕킹 + 상단 6px 골드 진행선 바 + 상단 브랜드 워터마크
+    print("  [Step 7] Concat + BGM 사이드체인 오디오 덕킹 + 상단 6px 골드 진행선 바 + 브랜드 오버레이 합성...")
     bgm_path = os.path.join(BGM_DIR, bgm_name)
     if not os.path.exists(bgm_path):
         bgm_path = os.path.join(BGM_DIR, "bgm_history_epic.mp3")
 
     final_output = os.path.join(target_dir, f"final_shorts_{lang}.mp4")
-    total_sec = assemble_final_shorts(chunks_list, bgm_path, final_output, temp_dir, bgm_vol=0.22)
+    total_sec = assemble_final_shorts(
+        chunks_list, bgm_path, final_output, temp_dir,
+        bgm_vol=0.12,
+        brand_overlay_png=brand_overlay_png,
+        thumb_duration=COVER_DURATION
+    )
     file_size_mb = os.path.getsize(final_output) / (1024 * 1024)
 
     # 하위 호환성을 위해 기존 이름 파일도 생성/복사
@@ -1000,5 +1116,10 @@ if __name__ == "__main__":
         sys.path.insert(0, BASE_DIR)
         from src.config import get_daily_dir
         target_date = sys.argv[1] if len(sys.argv) > 1 else None
-        target_path = get_daily_dir(target_date)
+        edition = sys.argv[2] if len(sys.argv) > 2 else "history"
+        ko_cand = get_daily_dir(target_date, edition=edition)
+        if os.path.exists(os.path.join(ko_cand, "masterpiece_script.json")):
+            target_path = ko_cand
+        else:
+            target_path = get_daily_dir(target_date)
     render_masterpiece_from_script(target_path)

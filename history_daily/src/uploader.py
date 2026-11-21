@@ -73,17 +73,21 @@ def build_video_metadata(script_data: dict, script_path: str = "", edition="hist
     is_english = edition in ("history_en", "en") or script_data.get("lang") == "en"
 
     corner_name = script_data.get("corner_name", "History Time Machine" if is_english else "역사 타임머신")
-    event_title = script_data.get("event_title", "Turning Point in History" if is_english else "역사의 순간")
+    raw_title = script_data.get("title", "")
+    clean_ev_title = re.sub(r'^\[.*?\]\s*', '', raw_title).strip()
+    event_title = script_data.get("event_title") or clean_ev_title or ("Turning Point in History" if is_english else "역사의 순간")
     hook_question = script_data.get("hook_question", "")
-    why_desc = script_data.get("why_today_desc", "")
     scenes = script_data.get("scenes", [])
     bgm_name = script_data.get("bgm", "ancient_rite.mp3")
+    fact_check = script_data.get("fact_check", {})
+    primary_source = script_data.get("primary_source") or fact_check.get("primary_source", "")
+    wiki_title = script_data.get("wiki_page_title", "")
 
     clean_corner_tag = re.sub(r'[\s·\-\.\/]', '', corner_name)
 
     # 1. 제목 (유튜브 API 엄격 제한 100자 이내 보장)
     suffix = " #Shorts"
-    if hook_question:
+    if hook_question and hook_question not in event_title:
         base_title = f"[{corner_name}] {event_title} | {hook_question}"
     else:
         base_title = f"[{corner_name}] {event_title}"
@@ -93,28 +97,27 @@ def build_video_metadata(script_data: dict, script_path: str = "", edition="hist
         base_title = base_title[:max_base_len - 3].rstrip() + "..."
     title = f"{base_title}{suffix}"
 
-    # 2. 타임라인 목차 조립 (타임코드 + 씬 소제목)
-    intro_label = "Today in History" if is_english else "오늘의 역사 타임머신"
-    timeline_lines = [f"00:00 [Intro] {intro_label}"]
-    accum_sec = 4  # 인트로 커버 4.2초
+    # 2. 타임라인 목차 조립 (내부 씬 번호 배제, 시청자 중심 스토리 챕터 구성)
+    intro_label = "The Beginning of Tragedy" if is_english else "역사의 순간 오프닝"
+    timeline_lines = [f"00:00 [오프닝] {intro_label}"]
+    accum_sec = 4  # 인트로 커버 3.5~4초
     script_dir = os.path.dirname(os.path.abspath(script_path)) if script_path else ""
 
     for sc in scenes:
-        s_num = sc.get("scene_number", 1)
         d_title = sc.get("display_title", "").strip()
-
         m_val = accum_sec // 60
         s_val = accum_sec % 60
         timecode = f"{m_val:02d}:{s_val:02d}"
 
-        tag_name = f"Scene {s_num}" if is_english else f"씬 {s_num}"
         if d_title:
-            timeline_lines.append(f"{timecode} [{tag_name}] {d_title}")
+            timeline_lines.append(f"{timecode} {d_title}")
         else:
-            timeline_lines.append(f"{timecode} [{tag_name}]")
+            caption = sc.get("image_caption", "")
+            timeline_lines.append(f"{timecode} {caption or '역사의 현장'}")
 
-        scene_dur = 12
+        scene_dur = 11
         if script_dir:
+            s_num = sc.get("scene_number", 1)
             aud_p = os.path.join(script_dir, "audio", f"scene{s_num}.mp3")
             if os.path.exists(aud_p):
                 scene_dur = int(round(get_audio_duration_sec(aud_p)))
@@ -122,31 +125,72 @@ def build_video_metadata(script_data: dict, script_path: str = "", edition="hist
 
     m_val = accum_sec // 60
     s_val = accum_sec % 60
-    outro_label = "Questions History Left Behind" if is_english else "역사가 남긴 질문"
-    timeline_lines.append(f"{m_val:02d}:{s_val:02d} [Epilogue] {outro_label}")
-
+    outro_label = "Historical Reflection" if is_english else "역사가 남긴 질문"
+    timeline_lines.append(f"{m_val:02d}:{s_val:02d} [에필로그] {outro_label}")
     timeline_text = "\n".join(timeline_lines)
 
-    # 3. 본문 설명 (Description) 조립
-    outro_q = script_data.get("outro_debate", {}).get("question_a_2", "Lessons from history" if is_english else "역사의 교훈과 성찰")
+    # 3. 본문 설명 (Description) 조립: 시놉시스 + 사건 전개 타임라인 + 1차 사료 팩트체크 + 토론 질문 + 크레딧
+    hook_point = fact_check.get("killer_hook_point") or fact_check.get("corner_reason") or script_data.get("why_today_desc", "")
+    pinned_q = script_data.get("pinned_comment") or script_data.get("outro_debate", {}).get("question_a_2", "역사의 교훈과 성찰")
+
     if is_english:
         desc_blocks = [
-            f"⏳ {hook_question}\n{why_desc}".strip(),
-            f"📖 [Timeline & Chapters]\n{timeline_text}",
-            f"🏛️ [Visual Archives & Credits]\n• Historical Archives: Wikimedia Commons & Public Domain Records\n• AI Reconstruction: Google Vertex AI Visual Engine\n• Music: {bgm_name} (Royalty Free Archive)",
-            f"💬 [Question to Ponder]\n\"{outro_q}\"",
-            f"#history #onthisday #documentary #shorts #worldhistory #history_en"
+            f"⏳ {hook_question}\n\n{hook_point}".strip(),
+            f"📖 [Timeline & Story Chapters]\n{timeline_text}"
         ]
+        fc_lines = ["📜 [Verified Historical Sources]"]
+        if primary_source:
+            fc_lines.append(f"• Primary Source: {primary_source}")
+        if wiki_title:
+            fc_lines.append(f"• Wikipedia Reference: https://en.wikipedia.org/wiki/{wiki_title}")
+        facts = fact_check.get("verified_facts", [])
+        if facts:
+            fc_lines.append("• Verified Historical Facts:")
+            for f_item in facts[:3]:
+                fc_lines.append(f"  - {f_item}")
+        myth = fact_check.get("debunked_myth", {})
+        if myth:
+            fc_lines.append(f"• Historical Myth vs Truth:\n  - Myth: {myth.get('myth', '')}\n  - Truth: {myth.get('truth', '')}")
+        desc_blocks.append("\n".join(fc_lines))
+
+        desc_blocks.append(f"💬 [Question to Ponder]\n\"{pinned_q}\"")
+        desc_blocks.append(
+            f"🏛️ [Visual Archives & Credits]\n"
+            f"• Historical Archives: Wikimedia Commons & Public Domain Records\n"
+            f"• AI Visual Reconstruction: Google Vertex AI Historical Engine\n"
+            f"• Background Music: {bgm_name} (Royalty Free Archive)\n\n"
+            f"#history #onthisday #documentary #shorts #worldhistory #history_en"
+        )
         default_lang = "en"
         base_tags = ["history", "onthisday", "shorts", "documentary", "worldhistory", "history_en"]
     else:
         desc_blocks = [
-            f"⏳ {hook_question}\n{why_desc}".strip(),
-            f"📖 [오늘의 역사 타임라인 & 챕터]\n{timeline_text}",
-            f"🏛️ [시각 사료 및 제작 크레딧]\n• 역사 사료: 위키미디어 커먼즈(Wikimedia Commons) 및 공공 역사 아카이브\n• AI 고증 복원: Google Vertex AI 시각화 모델\n• 배경음악: {bgm_name} (Royalty Free Archive)",
-            f"💬 [생각해볼 질문]\n\"{outro_q}\"",
-            f"#역사 #오늘의역사 #쇼츠 #Shorts #다큐멘터리 #{clean_corner_tag}"
+            f"⏳ {hook_question}\n\n{hook_point}".strip(),
+            f"📖 [사건 전개 타임라인]\n{timeline_text}"
         ]
+        fc_lines = ["📜 [1차 사료 및 팩트체크 검증]"]
+        if primary_source:
+            fc_lines.append(f"• 공인 1차 사료: {primary_source}")
+        if wiki_title:
+            fc_lines.append(f"• 위키백과 사료 문서: https://en.wikipedia.org/wiki/{wiki_title}")
+        facts = fact_check.get("verified_facts", [])
+        if facts:
+            fc_lines.append("• 교차 검증된 핵심 역사적 사실:")
+            for f_item in facts[:3]:
+                fc_lines.append(f"  - {f_item}")
+        myth = fact_check.get("debunked_myth", {})
+        if myth:
+            fc_lines.append(f"• 역사적 왜곡 바로잡기 (Fact vs Myth):\n  - 통설/오해: {myth.get('myth', '')}\n  - 사료 팩트: {myth.get('truth', '')}")
+        desc_blocks.append("\n".join(fc_lines))
+
+        desc_blocks.append(f"💬 [생각해볼 질문 | 댓글로 의견을 나눠주세요]\n\"{pinned_q}\"")
+        desc_blocks.append(
+            f"🏛️ [시각 사료 및 제작 크레딧]\n"
+            f"• 역사 사료: 위키미디어 커먼즈(Wikimedia Commons) 및 공공 역사 아카이브\n"
+            f"• AI 고증 복원: Google Vertex AI 시각화 모델\n"
+            f"• 배경음악: {bgm_name} (Royalty Free Archive)\n\n"
+            f"#역사 #오늘의역사 #쇼츠 #Shorts #다큐멘터리 #{clean_corner_tag}"
+        )
         default_lang = "ko"
         base_tags = list(DEFAULT_TAGS)
 
@@ -275,9 +319,16 @@ def upload_masterpiece_video(video_path: str, script_path: str, privacy: str = "
         "video_url": video_url,
         "uploaded_at": datetime.now().isoformat(),
         "title": meta["title"],
+        "description": meta["description"],
+        "tags": meta["tags"],
         "privacy": actual_privacy,
         "publish_at": publish_at_iso,
-        "schedule_info": schedule_info
+        "schedule_info": schedule_info,
+        "fact_check": {
+            "primary_source": script_data.get("primary_source") or script_data.get("fact_check", {}).get("primary_source", ""),
+            "verified_facts": script_data.get("fact_check", {}).get("verified_facts", []),
+            "debunked_myth": script_data.get("fact_check", {}).get("debunked_myth", {})
+        }
     }
     with open(info_path, "w", encoding="utf-8") as f:
         json.dump(upload_info, f, ensure_ascii=False, indent=2)

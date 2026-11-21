@@ -6,7 +6,7 @@ on:
       pipeline:
         description: '실행할 파이프라인 선택'
         required: true
-        default: 'all (둘 다 순차 실행)'
+        default: 'daily (1분 타임머신만 실행)'
         type: choice
         options:
           - 'all (둘 다 순차 실행)'
@@ -103,7 +103,7 @@ jobs:
       # (선택값이 'all' 이거나 'deepdive' 일 때만 가동)
       # -----------------------------------------------------------------------
       - name: Run Pipeline (History Deepdive Masterpiece & Auto Upload) with retry
-        if: ${{ github.event_name != 'workflow_dispatch' || contains(inputs.pipeline, 'all') || contains(inputs.pipeline, 'deepdive') }}
+        if: ${{ github.event_name == 'workflow_dispatch' && (contains(inputs.pipeline, 'all') || contains(inputs.pipeline, 'deepdive')) }}
         uses: nick-fields/retry@v3
         with:
           max_attempts: 3
