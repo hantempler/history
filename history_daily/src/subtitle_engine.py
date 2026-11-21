@@ -127,77 +127,9 @@ def format_sub_display(text: str) -> str:
     # 1-2. 연도: 자릿수 결합 (천구백구십육년 -> 1996년, 이천이십육년 -> 2026년)
     t = re.sub(r'((?:천[팔구]백|이천)[영공일이삼사오육칠팔구십백천]*)년', repl_year, t)
 
-    # 2. 월: 시월, 유월, 십월 등
-    month_map = {
-        '일월': '1월', '이월': '2월', '삼월': '3월', '사월': '4월',
-        '오월': '5월', '유월': '6월', '칠월': '7월', '팔월': '8월',
-        '구월': '9월', '시월': '10월', '십월': '10월',
-        '십일월': '11월', '십이월': '12월'
-    }
-    for k, v in month_map.items():
-        t = re.sub(rf'(?<![가-힣]){k}', v, t)
-
-    # 3. 일: 1일 ~ 31일 (날짜 맥락 한정: 조사, 공백, 문장부호 또는 문자열 끝)
-    def repl_day(m):
-        full = m.group(1)
-        try:
-            val = parse_sino(full)
-            if 1 <= val <= 31:
-                return f"{val}일"
-        except Exception:
-            pass
-        return m.group(0)
-
-    t = re.sub(r'(?<![가-힣])([일이삼사오육칠팔구십]+)일(?=[\s,.\'\"~-]|$|부터|까지|에|은|는|이|가|도|로|만|간)', repl_day, t)
-
-    # 4. 일반 수사 + 단위 결합 (달러, 원, 명, 개, 분, 초, 시간, %, 퍼센트, 척, 등, 위, 배, 대)
-    unit_pattern = r'(?<![가-힣])([일이삼사오육칠팔구십백천]+)\s*(달러|원|엔|위안|파운드|분|초|시간|퍼센트|%|프로|도|살|세|명|개|장|권|척|곡|편|회|등|위|점|배|대|병|잔|골|승|패)'
-    def repl_unit(m):
-        full = m.group(1)
-        unit = m.group(2)
-        try:
-            val = parse_sino(full)
-            if val > 0:
-                if unit in ['퍼센트', '프로']:
-                    return f"{val}%"
-                return f"{val}{unit}"
-        except Exception:
-            pass
-        return m.group(0)
-
-    t = re.sub(unit_pattern, repl_unit, t)
-
-    # 5. 고유어 수사 + 단위 (스물다섯 살, 세 명, 두 개 등)
-    def repl_native_unit(m):
-        word = m.group(0).strip()
-        unit = m.group(2)
-        num_part = word[:-len(unit)].strip()
-        val = parse_native(num_part)
-        if val is not None:
-            return f"{val}{unit}"
-        return m.group(0)
-
-    t = re.sub(r'(?<![가-힣])([스서마쉰예일여아열한두세네다여일여아][가-힣]*?)\s*(살|세|명|개|장|권|척|곡|편|회|대|병|잔|골|점)', repl_native_unit, t)
-
-    # 6. 큰 수 단위 (오만 명 -> 5만 명, 백만 -> 100만, 오백 달러 -> 500달러)
-    def repl_man(m):
-        num_str = m.group(1)
-        val = parse_sino(num_str)
-        unit_trail = m.group(2) or ''
-        if val > 0:
-            return f"{val}만{unit_trail}"
-        return m.group(0)
-
-    t = re.sub(r'(?<![가-힣])([일이삼사오육칠팔구십]+)만(\s*명|\s*원|\s*달러|\s*장|\s*개|\s*뷰|\s*원)?', repl_man, t)
-    t = re.sub(r'(?<![가-힣])백만(\s*명|\s*원|\s*달러|\s*장|\s*개|\s*뷰)?', r'100만\1', t)
-    t = re.sub(r'(?<![가-힣])천만(\s*명|\s*원|\s*달러|\s*장|\s*개|\s*뷰)?', r'1,000만\1', t)
-    t = re.sub(r'(?<![가-힣])일억(\s*명|\s*원|\s*달러|\s*장|\s*개)?', r'1억\1', t)
-    t = re.sub(r'(?<![가-힣])십억(\s*명|\s*원|\s*달러|\s*장|\s*개)?', r'10억\1', t)
-    t = re.sub(r'(?<![가-힣])백억(\s*명|\s*원|\s*달러|\s*장|\s*개)?', r'100억\1', t)
-    t = re.sub(r'(?<![가-힣])천억(\s*명|\s*원|\s*달러|\s*장|\s*개)?', r'1,000억\1', t)
-    t = re.sub(r'(?<![가-힣])일조(\s*원|\s*달러)?', r'1조\1', t)
-
-    return t
+    # 🚨 단어 훼손 방지: '오만(5만)', '사살(4살)' 등 한글 명사를 변조시키는 위험한 정규식을 전면 영구 배제.
+    # 대본에 작성된 정확한 한국어 어휘와 아라비아 숫자를 100% 무손실로 안전 보존합니다.
+    return " ".join(t.split())
 
 
 # ---------------------------------------------------------------------------
@@ -310,7 +242,7 @@ def analyze_dynamic_chunks(scenes, lang="ko", gcp_project_id=GCP_PROJECT_ID, gcp
             scenes_input.append({
                 "scene_number": s_num,
                 "caption": sc.get("image_caption") or sc.get("display_title", ""),
-                "script": sc.get("script", "")
+                "script": sc.get("subtitle_text") or sc.get("script", "")
             })
 
         if lang == "en":
@@ -687,7 +619,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
         chunks = sc.get("chunks") or analyzed_map.get(s_no, [])
         if not chunks:
-            chunks = rule_based_chunking(sc.get("script", ""))
+            chunks = rule_based_chunking(sc.get("subtitle_text") or sc.get("script", ""))
 
         # 1. Google Cloud TTS 실측 Timepoints 우선 적용
         timings = []

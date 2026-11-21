@@ -254,10 +254,12 @@ def generate_killer_script(target_date=None, edition="history"):
 {json.dumps(fact_data, ensure_ascii=False, indent=2)}
 
 [대본 작성 절대 룰 - 엄격 준수]
-1. [러닝타임 제약 - 75~95초 황금 구간]:
+1. [화면 자막(subtitle_text)과 성우 낭독(tts_script) 명확한 분리 및 러닝타임 제약]:
    - 반드시 총 7개 씬(씬 1부터 씬 7)으로 구성합니다.
-   - 씬당 내레이션 글자 수는 공백 포함 75~85자 내외(약 12~14초)로 작성하여, 7개 씬 전체 내레이션 총합이 정확히 520~600자가 되도록 엄격히 통제하세요.
-   - 성우가 낭독했을 때 최종 영상 길이가 정확히 75초~95초 사이가 되어야 합니다.
+   - subtitle_text: 화면에 시청자가 읽는 74pt 대형 자막. '1996년', '5만 명', '300달러'처럼 아라비아 숫자를 적극 사용하고, '오만', '사살' 등 모든 한국어/한자어 어휘는 원형 그대로 완벽하게 표기하세요.
+   - tts_script: 성우(Google Cloud TTS)가 자연스럽고 또렷하게 읽는 낭독 대본. (공백 포함 75~85자 내외, 약 12~14초)
+   - script: 기존 호환성을 위해 subtitle_text와 동일하게 기재하세요.
+   - 7개 씬 전체 낭독 총합이 정확히 520~600자가 되도록 엄격히 통제하세요 (75~95초 황금 러닝타임).
 2. [위인전/도덕 훈계 어투 100% 금지]:
    - "우리는 본받아야 합니다", "성현의 뜻을 기리며" 같은 훈계조 절대 금지!
    - 써에이스쇼/OverSimplified처럼 찰진 구어체와 극적인 긴장감을 살리세요.
@@ -294,7 +296,9 @@ def generate_killer_script(target_date=None, edition="history"):
     {{
       "scene_number": 1,
       "display_title": "씬 1 소제목 (8~14자)",
-      "script": "성우 낭독 내레이션 (75~85자 내외)",
+      "subtitle_text": "화면 자막용 텍스트 (75~85자, 1996년 등 숫자 표기 및 정밀 어휘)",
+      "tts_script": "성우 낭독용 텍스트 (75~85자)",
+      "script": "화면 자막과 동일한 텍스트",
       "camera_motion": "face_zoom",
       "highlight_keywords": ["핵심키워드"],
       "image_search_keyword": "specific english keyword",
@@ -391,8 +395,12 @@ def generate_killer_script(target_date=None, edition="history"):
     total_chars = 0
     for idx, sc in enumerate(script_data.get("scenes", [])):
         sc["scene_number"] = idx + 1
-        sc["script"] = clean_narration_text(sc.get("script", ""))
-        total_chars += len(sc["script"])
+        sub_text = sc.get("subtitle_text") or sc.get("script", "")
+        tts_text = sc.get("tts_script") or sc.get("script", "")
+        sc["subtitle_text"] = clean_narration_text(sub_text)
+        sc["tts_script"] = clean_narration_text(tts_text)
+        sc["script"] = sc["subtitle_text"]  # 하위 호환성 유지
+        total_chars += len(sc["tts_script"])
         if sc.get("camera_motion") not in VALID_MOTIONS:
             sc["camera_motion"] = "push_in" if idx % 2 == 0 else "pan_lr"
         if not sc.get("highlight_keywords"):

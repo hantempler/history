@@ -140,7 +140,7 @@ def generate_scene_audios(script_data: dict, out_dir: str, edition="history"):
 
     for idx, sc in enumerate(scenes):
         s_num = sc.get("scene_number", idx + 1)
-        raw_script = sc.get("script", "").strip()
+        raw_script = (sc.get("tts_script") or sc.get("script", "")).strip()
         script_text = clean_tts_text(raw_script)
 
         dest_audio = os.path.join(audio_dir, f"scene{s_num}.mp3")

@@ -5,7 +5,10 @@ import json
 import shutil
 import urllib.request
 import urllib.parse
+import urllib.error
 from PIL import Image
+
+WIKI_USER_AGENT = 'PRJHistoryBot/2.0 (https://github.com/hantempler/history; contact: dev@history.local; history documentary engine)'
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.config import get_daily_dir, ASSETS_DIR, GCP_PROJECT_ID, GCP_LOCATION
@@ -21,7 +24,7 @@ FALLBACK_IMAGES = [
 ]
 
 
-def search_wikimedia_image(keyword: str, script_summary: str, dest_path: str) -> tuple[bool, str]:
+def search_wikimedia_image(keyword: str, script_summary: str, dest_path: str, max_retries: int = 2) -> tuple[bool, str]:
     """
     위키미디어 Commons/Wikipedia API 검색 + 핵심 키워드 랭킹 + Gemini Flash 비전 검증
     부적합한 엉뚱한 인물/사진을 100% 걸러내고 검증된 사료만 승인합니다.
@@ -34,9 +37,25 @@ def search_wikimedia_image(keyword: str, script_summary: str, dest_path: str) ->
             f"https://en.wikipedia.org/w/api.php?action=query&generator=search"
             f"&gsrsearch={encoded_kw}&gsrlimit=8&prop=pageimages&pithumbsize=1280&format=json"
         )
-        req = urllib.request.Request(url, headers={'User-Agent': 'PRJHistoryBot/2.0 (history documentary engine)'})
-        with urllib.request.urlopen(req, timeout=12) as resp:
-            data = json.loads(resp.read().decode('utf-8'))
+        data = None
+        for attempt in range(max_retries):
+            try:
+                time.sleep(1.2)  # 위키미디어 API 연속 호출 방지 1.2초 쿨다운
+                req = urllib.request.Request(url, headers={'User-Agent': WIKI_USER_AGENT})
+                with urllib.request.urlopen(req, timeout=12) as resp:
+                    data = json.loads(resp.read().decode('utf-8'))
+                break
+            except urllib.error.HTTPError as e:
+                if e.code == 429:
+                    wait_sec = 4 * (attempt + 1)
+                    print(f"    ⏳ [위키미디어 429 쿨다운] {wait_sec}초 대기 후 재시도 중 ({attempt+1}/{max_retries})...")
+                    time.sleep(wait_sec)
+                else:
+                    print(f"    ⚠️ 위키미디어 검색 HTTP 오류 ('{keyword}'): {e}")
+                    return False, None
+
+        if not data:
+            return False, None
 
         pages = list(data.get('query', {}).get('pages', {}).values())
         if not pages:
@@ -70,7 +89,8 @@ def search_wikimedia_image(keyword: str, script_summary: str, dest_path: str) ->
             if len(kw_tokens) >= 1 and score == 0:
                 continue
 
-            img_req = urllib.request.Request(thumb_url, headers={'User-Agent': 'Mozilla/5.0'})
+            time.sleep(0.8)  # 썸네일 다운로드 간 0.8초 쿨다운
+            img_req = urllib.request.Request(thumb_url, headers={'User-Agent': WIKI_USER_AGENT})
             with urllib.request.urlopen(img_req, timeout=15) as img_resp:
                 with open(dest_path, "wb") as f_out:
                     f_out.write(img_resp.read())
